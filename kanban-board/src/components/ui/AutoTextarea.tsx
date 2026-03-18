@@ -26,7 +26,7 @@ export function AutoTextarea({ onSubmit, ...props }: AutoTextareaProps) {
   return (
     <textarea
       ref={ref}
-      className="w-full resize-none rounded border-0 bg-transparent p-0 focus:ring-0"
+      className="w-full resize-none rounded border-0 bg-transparent p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
       onKeyDown={handleKeyDown}
       {...props}
     />

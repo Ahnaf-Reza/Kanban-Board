@@ -1,13 +1,25 @@
 import { useEffect, useState } from "react";
 
-export function useDarkMode() {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
+const THEME_STORAGE_KEY = "kanban-theme";
 
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+function getInitialTheme(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (savedTheme === "dark") {
+    return true;
+  }
+  if (savedTheme === "light") {
+    return false;
+  }
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+export function useDarkMode() {
+  const [isDark, setIsDark] = useState(getInitialTheme);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -15,7 +27,14 @@ export function useDarkMode() {
     }
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (event: MediaQueryListEvent) => setIsDark(event.matches);
+    const handler = (event: MediaQueryListEvent) => {
+      const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+      if (savedTheme === "dark" || savedTheme === "light") {
+        return;
+      }
+
+      setIsDark(event.matches);
+    };
 
     mediaQuery.addEventListener("change", handler);
     return () => mediaQuery.removeEventListener("change", handler);
@@ -23,7 +42,16 @@ export function useDarkMode() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
+    document.documentElement.style.colorScheme = isDark ? "dark" : "light";
   }, [isDark]);
 
-  return { isDark, toggle: () => setIsDark((value) => !value) };
+  const toggle = () => {
+    setIsDark((current) => {
+      const next = !current;
+      window.localStorage.setItem(THEME_STORAGE_KEY, next ? "dark" : "light");
+      return next;
+    });
+  };
+
+  return { isDark, toggle };
 }

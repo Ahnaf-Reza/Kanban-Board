@@ -4,7 +4,7 @@ import { clsx } from "clsx";
 import type { InputProps } from "../../types/ui";
 
 const inputVariants = cva(
-  "w-full rounded-md border bg-white text-slate-900 shadow-sm transition-colors outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60",
+  "w-full rounded-md border bg-white text-slate-900 shadow-sm transition-colors outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500",
   {
     variants: {
       intent: {
@@ -45,7 +45,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   return (
     <div className={clsx("w-full", wrapperClassName)}>
       {label ? (
-        <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium text-slate-700">
+        <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
           {label}
         </label>
       ) : null}
@@ -65,7 +65,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         </p>
       ) : null}
       {!errorMessage && hint ? (
-        <p id={`${inputId}-message`} className="mt-1.5 text-sm text-slate-500">
+        <p id={`${inputId}-message`} className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
           {hint}
         </p>
       ) : null}

@@ -5,7 +5,7 @@ import type { CardProps } from "../../types/ui";
     return (
       <div
         className={clsx(
-          "rounded-lg border bg-white p-4 shadow-sm transition-all",
+          "rounded-lg border border-slate-200 bg-white p-4 text-slate-900 shadow-sm transition-all dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100",
           isDragging && "rotate-3 scale-105 shadow-xl opacity-90",
           isOver && "ring-2 ring-blue-500",
           className,

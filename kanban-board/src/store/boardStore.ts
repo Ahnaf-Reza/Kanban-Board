@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
+import { current } from "immer";
 import type { BoardState, ColumnId, Task, TaskId } from "../types/board";
 import { toBoardState } from "../utils/boardGuards";
 
@@ -21,14 +22,24 @@ interface BoardStore extends BoardState {
 
 const generateId = () => crypto.randomUUID();
 
+const createSnapshot = (state: BoardState): BoardState => ({
+  tasks: structuredClone(state.tasks),
+  columns: structuredClone(state.columns),
+  columnOrder: [...state.columnOrder],
+});
+
+const initialBoardState: BoardState = {
+  tasks: {},
+  columns: {},
+  columnOrder: [],
+};
+
 export const useBoardStore = create<BoardStore>()(
   persist(
     immer((set, get) => ({
-      tasks: {},
-      columns: {},
-      columnOrder: [],
-      history: [],
-      historyIndex: -1,
+      ...initialBoardState,
+      history: [createSnapshot(initialBoardState)],
+      historyIndex: 0,
 
       addTask: (columnId, content) => {
         const taskId = generateId() as TaskId;
@@ -138,11 +149,8 @@ export const useBoardStore = create<BoardStore>()(
 
       pushToHistory: () => {
         set((state) => {
-          const snapshot: BoardState = {
-            tasks: structuredClone(state.tasks),
-            columns: structuredClone(state.columns),
-            columnOrder: [...state.columnOrder],
-          };
+          const plainState = current(state);
+          const snapshot = createSnapshot(plainState);
 
           state.history = state.history.slice(0, state.historyIndex + 1);
           state.history.push(snapshot);
@@ -189,6 +197,8 @@ export const useBoardStore = create<BoardStore>()(
           tasks: parsed.tasks,
           columns: parsed.columns,
           columnOrder: parsed.columnOrder,
+          history: [createSnapshot(parsed)],
+          historyIndex: 0,
         };
       },
     },

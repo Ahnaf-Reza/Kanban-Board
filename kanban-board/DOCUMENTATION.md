@@ -29,8 +29,10 @@ Last updated: 2026-03-18
 - Day 14 polish features implemented in code:
   - debounced task auto-save (useDebouncedCallback)
   - framer-motion task animations
-  - dark mode hook using system preference detection
+  - dark mode hook using system preference detection with persisted manual override
   - useMemo-based task filtering and derived board data
+  - class-driven Tailwind dark variant wired to the `dark` root class
+  - modal and input dark-mode surface styling for Create Column and Delete Column dialogs
 - Day 3 concept integration implemented in code:
   - async queue utility in src/utils/asyncQueue.ts
   - queued mock remote save path in src/lib/taskApi.ts
@@ -38,7 +40,6 @@ Last updated: 2026-03-18
 ### In Progress / Partial
 
 - Optimistic updates with rollback are implemented in task editing flow, but still need full end-to-end UX validation under simulated failures.
-- BoardView exists and is connected to store logic, but the default app entry still renders the UI demo in src/App.tsx instead of mounting the board screen as the primary app surface.
 - DnD behavior compiles, but full production-grade interactions and keyboard behavior still need manual testing and polish.
 
 ### Not Done Yet

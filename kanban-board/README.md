@@ -1,73 +1,166 @@
-# React + TypeScript + Vite
+# Kanban Board
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Trello-inspired Kanban board built with React, TypeScript, Zustand, dnd-kit, and Framer Motion.
 
-Currently, two official plugins are available:
+## Live Demo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Add your deployment URL here after Vercel setup:
 
-## React Compiler
+https://your-kanban.vercel.app
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Stack
 
-## Expanding the ESLint configuration
+- React 19 + TypeScript (strict)
+- Vite 7
+- Zustand + Immer + Persist middleware
+- dnd-kit (drag and drop)
+- Framer Motion (animations)
+- Tailwind CSS 4
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Architecture Decisions
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Why Zustand over Redux?
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Zustand was chosen because this project benefits from:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- A small API surface and low boilerplate for feature iteration
+- Direct selector-based subscriptions to reduce unnecessary re-renders
+- Easy integration of middleware (persist + immer)
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+This keeps the store concise while still allowing predictable updates.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### State Normalization
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Board state is normalized into:
+
+- tasks: Record<TaskId, Task>
+- columns: Record<ColumnId, Column>
+- columnOrder: ColumnId[]
+
+This enables O(1) task lookups, simplifies move/reorder operations, and avoids deeply nested immutable updates.
+
+### Undo/Redo Implementation
+
+Undo/redo uses immutable snapshots of the board shape:
+
+- Snapshot fields: tasks, columns, columnOrder
+- Snapshot strategy: structuredClone for object graphs, array copy for columnOrder
+- History truncation: if new actions happen after undo, future snapshots are dropped
+
+This yields deterministic timeline behavior without mutating historical entries.
+
+### Persistence + Runtime Safety
+
+State is persisted with Zustand persist middleware under the kanban-board-storage key.
+Hydration is guarded with runtime validation before merge so invalid localStorage data does not corrupt active state.
+
+## Concepts Applied
+
+| Concept | Where It Is Used |
+| --- | --- |
+| Debounce | Task content autosave in TaskCard |
+| Deep Clone | Undo/redo snapshots in boardStore |
+| Type Guards | Persisted state validation during merge |
+| useEffect Cleanup | Debounce timer cleanup and matchMedia listener cleanup |
+| useMemo | Search filtering and derived per-column task lists |
+| Optimistic UI + Rollback | Task update with rollback on remote failure |
+| Async Queue | Concurrency-limited remote save queue |
+
+## Functional Coverage
+
+- Add task per column
+- Inline edit with debounced autosave
+- Optimistic save with rollback on failure
+- Drag and drop task movement across columns
+- Undo/redo in store timeline
+- Search/filter task content
+- Dark mode based on system preference with manual toggle
+
+## Theme Notes
+
+- Dark mode uses a class-driven Tailwind v4 variant so UI state follows the in-app toggle reliably instead of only OS media queries.
+- Theme preference is persisted in localStorage under `kanban-theme` and restored on load.
+- Root page colors, modal surfaces, and form inputs now have explicit dark-mode styles so dialogs (Create Column / Delete Column) render correctly in both themes.
+
+## Pre-Deployment Checklist (Completed)
+
+Executed locally on 2026-03-18:
+
+- npm run typecheck: pass
+- npm run lint: pass
+- npm run build: pass
+
+Latest production build summary:
+
+- dist/index.html: 0.46 kB (gzip 0.29 kB)
+- dist/assets/index-DTyIB-XY.css: 18.00 kB (gzip 4.18 kB)
+- dist/assets/index-B1Tnxc9T.js: 202.29 kB (gzip 63.85 kB)
+
+## Local Development
+
+Install and run:
+
+1. npm install
+2. npm run dev
+
+Useful scripts:
+
+- npm run typecheck
+- npm run lint
+- npm run build
+- npm run preview
+
+## Deployment Guide (Vercel)
+
+### Option A: Vercel Dashboard (recommended)
+
+1. Push code to GitHub.
+2. In Vercel, click Add New Project and import this repository.
+3. Set Root Directory to kanban-board.
+4. Build Command: npm run build
+5. Output Directory: dist
+6. Install Command: npm ci
+7. Deploy.
+
+### Option B: Vercel CLI
+
+1. npm i -g vercel
+2. From the repository root, run vercel
+3. When prompted, set project root to kanban-board
+4. Confirm build/output settings and deploy
+
+## How To See Everything During Deployment
+
+### Local visibility
+
+- npm run preview to verify production output locally
+- Browser devtools:
+  - Network tab for request timing/errors
+  - Console tab for runtime logs
+  - Performance tab for render bottlenecks
+
+### Vercel visibility
+
+- Deployments tab: each build and status
+- Build Logs: install/build output with exact failing command
+- Runtime Logs: request-time logs for serverless/edge functions
+- Domains tab: active URL and aliases
+- Analytics tab (if enabled): traffic and Web Vitals
+
+## CI (Bonus)
+
+A GitHub Actions workflow is included at repository level to run:
+
+- npm ci
+- npm run typecheck
+- npm run lint
+- npm run build
+
+for pushes and pull requests.
+
+## What I Learned
+
+- Normalized state makes drag/drop and history logic significantly easier to reason about.
+- Optimistic updates are most useful when combined with explicit rollback behavior.
+- Debounce and memoization are high-impact when applied only where needed.
+- Deployment quality improves when typecheck, lint, and build are automated in CI.

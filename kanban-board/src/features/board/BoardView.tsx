@@ -10,17 +10,21 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { useEffect, useMemo, useState } from "react";
-import { Column } from "../../components/board/Column.tsx";
+import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { SortableColumn } from "../../components/board/SortableColumn";
 import { TaskCard } from "../../components/board/TaskCard.tsx";
+import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
+import { Modal } from "../../components/ui/Modal";
 import { useBoardStore } from "../../store/boardStore";
 import type { Column as BoardColumn, ColumnId, Task, TaskId } from "../../types/board";
 
 export function BoardView() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pendingColumnDelete, setPendingColumnDelete] = useState<{ id: ColumnId; title: string } | null>(null);
+  const hasInitializedColumns = useRef(false);
 
   const tasks = useBoardStore((state) => state.tasks);
   const columns = useBoardStore((state) => state.columns);
@@ -28,6 +32,9 @@ export function BoardView() {
   const addColumn = useBoardStore((state) => state.addColumn);
   const addTask = useBoardStore((state) => state.addTask);
   const moveTask = useBoardStore((state) => state.moveTask);
+  const deleteTask = useBoardStore((state) => state.deleteTask);
+  const deleteColumn = useBoardStore((state) => state.deleteColumn);
+  const reorderColumns = useBoardStore((state) => state.reorderColumns);
 
   const filteredTasks = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -65,11 +72,15 @@ export function BoardView() {
   );
 
   useEffect(() => {
+    if (hasInitializedColumns.current) return;
+
     if (columnOrder.length === 0) {
       addColumn("To Do");
       addColumn("In Progress");
       addColumn("Done");
     }
+
+    hasInitializedColumns.current = true;
   }, [addColumn, columnOrder.length]);
 
   const sensors = useSensors(
@@ -96,12 +107,6 @@ export function BoardView() {
     return null;
   };
 
-  const moveTaskToColumn = (taskId: TaskId, from: ColumnId, to: ColumnId) => {
-    const destination = columns[to];
-    if (!destination) return;
-    moveTask(taskId, from, to, destination.taskIds.length);
-  };
-
   const reorderTask = (activeId: TaskId, overId: TaskId) => {
     const fromColumn = findColumnByTaskId(activeId);
     const overColumn = findColumnByTaskId(overId);
@@ -118,27 +123,50 @@ export function BoardView() {
     setActiveTask(task);
   };
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id as TaskId;
-    const overId = over.id;
-
-    const activeColumn = findColumnByTaskId(activeId);
-    const overColumn = findColumnById(overId as ColumnId) || findColumnByTaskId(overId as TaskId);
-
-    if (activeColumn && overColumn && activeColumn.id !== overColumn.id) {
-      moveTaskToColumn(activeId, activeColumn.id, overColumn.id);
-    }
-  };
+  const handleDragOver = (_event: DragOverEvent) => {};
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
 
-    if (!over || active.id === over.id) return;
-    reorderTask(active.id as TaskId, over.id as TaskId);
+    if (!over) return;
+
+    const activeType = active.data.current?.type as "task" | "column" | undefined;
+    const overType = over.data.current?.type as "task" | "column" | undefined;
+
+    if (activeType === "column" && overType === "column") {
+      if (active.id === over.id) return;
+
+      const fromIndex = columnOrder.indexOf(active.id as ColumnId);
+      const toIndex = columnOrder.indexOf(over.id as ColumnId);
+      if (fromIndex === -1 || toIndex === -1) return;
+
+      reorderColumns(fromIndex, toIndex);
+      return;
+    }
+
+    if (activeType !== "task") return;
+
+    if (overType === "task") {
+      if (active.id === over.id) return;
+      reorderTask(active.id as TaskId, over.id as TaskId);
+      return;
+    }
+
+    if (overType === "column") {
+      const taskId = active.id as TaskId;
+      const fromColumn = findColumnByTaskId(taskId);
+      const toColumn = findColumnById(over.id as ColumnId);
+      if (!fromColumn || !toColumn) return;
+
+      moveTask(taskId, fromColumn.id, toColumn.id, toColumn.taskIds.length);
+    }
+  };
+
+  const confirmDeleteColumn = () => {
+    if (!pendingColumnDelete) return;
+    deleteColumn(pendingColumnDelete.id);
+    setPendingColumnDelete(null);
   };
 
   return (
@@ -154,22 +182,50 @@ export function BoardView() {
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
           placeholder="Search tasks..."
+          hint="Filter by content in real time"
           aria-label="Search tasks"
         />
       </div>
 
-      <div className="flex gap-4 overflow-x-auto p-4">
-        {columnData.map(({ columnId, column, columnTasks }) => (
-          <Column
-            key={columnId}
-            column={column}
-            tasks={columnTasks}
-            onAddTask={(content) => addTask(column.id, content)}
-          />
-        ))}
-      </div>
+      <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+        <div className="flex gap-4 overflow-x-auto p-4">
+          {columnData.map(({ columnId, column, columnTasks }) => (
+            <SortableColumn
+              key={columnId}
+              column={column}
+              tasks={columnTasks}
+              onAddTask={(content) => addTask(column.id, content)}
+              onDeleteTask={(taskId) => deleteTask(taskId, column.id)}
+              onDeleteColumn={() => setPendingColumnDelete({ id: column.id, title: column.title })}
+            />
+          ))}
+        </div>
+      </SortableContext>
 
       <DragOverlay>{activeTask ? <TaskCard task={activeTask} isDragging /> : null}</DragOverlay>
+
+      <Modal
+        open={pendingColumnDelete !== null}
+        onClose={() => setPendingColumnDelete(null)}
+        title="Delete Column"
+        description="This action cannot be undone and will remove all tasks in the column."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPendingColumnDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={confirmDeleteColumn}>
+              Delete Column
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          {pendingColumnDelete
+            ? `Are you sure you want to delete "${pendingColumnDelete.title}"?`
+            : "Are you sure you want to delete this column?"}
+        </p>
+      </Modal>
     </DndContext>
   );
 }
