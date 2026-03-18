@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "npm --prefix kanban-board run dev",
-    "build": "npm --prefix kanban-board run build",
+    "build": "npm --prefix kanban-board ci && npm --prefix kanban-board run build",
     "typecheck": "npm --prefix kanban-board run typecheck",
     "lint": "npm --prefix kanban-board run lint",
     "preview": "npm --prefix kanban-board run preview",
