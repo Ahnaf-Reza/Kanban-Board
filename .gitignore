@@ -1,0 +1,2 @@
+# Ignore the instruction-heavy root README in this workspace repo
+/README.md

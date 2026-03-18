@@ -6,6 +6,7 @@ import { Card } from "./components/ui/Card";
 import { IconButton } from "./components/ui/IconButton";
 import { Input } from "./components/ui/Input";
 import { Modal } from "./components/ui/Modal";
+import { useDarkMode } from "./hooks/useDarkMode";
 
 type LocalTask = {
   id: string;
@@ -14,6 +15,7 @@ type LocalTask = {
 };
 
 function App() {
+  const { isDark, toggle } = useDarkMode();
   const [tasks, setTasks] = useState<LocalTask[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -45,17 +47,22 @@ function App() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6 text-slate-900 md:p-10">
+    <main className="min-h-screen bg-slate-50 p-6 text-slate-900 transition-colors dark:bg-slate-900 dark:text-slate-100 md:p-10">
       <section className="mx-auto w-full max-w-4xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Kanban Board UI Kit</h1>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Controlled inputs, composition with children, and local state in one place.
             </p>
           </div>
 
-          <Button onClick={() => setIsCreateOpen(true)}>Add Task</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={toggle}>
+              {isDark ? "Light" : "Dark"} Mode
+            </Button>
+            <Button onClick={() => setIsCreateOpen(true)}>Add Task</Button>
+          </div>
         </header>
 
         <section aria-label="Task preview list" className="grid gap-3">
