@@ -38,7 +38,6 @@ function App() {
   const historyLength = useBoardStore((state) => state.history.length);
   const tasks = useBoardStore((state) => state.tasks);
   const columns = useBoardStore((state) => state.columns);
-  const isRemoteLoading = useBoardStore((state) => state.isRemoteLoading);
   const remoteError = useBoardStore((state) => state.remoteError);
 
   const taskCount = useMemo(() => Object.keys(tasks).length, [tasks]);
