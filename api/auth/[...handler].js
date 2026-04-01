@@ -52,5 +52,20 @@ export default async function authHandler(req, res) {
 		return;
 	}
 
-	return handler(req, res);
+	try {
+		return handler(req, res);
+	} catch (error) {
+		if (url.pathname.endsWith("/get-session")) {
+			// Secret rotation can invalidate existing signed session cookies.
+			// Return null so clients can recover by re-authenticating.
+			writeJson(res, 200, null);
+			return;
+		}
+
+		const message = error instanceof Error ? error.message : "Unknown auth runtime error";
+		writeJson(res, 500, {
+			error: "AUTH_RUNTIME_FAILED",
+			message,
+		});
+	}
 }
