@@ -3,5 +3,16 @@
   "framework": "vite",
   "installCommand": "npm --prefix kanban-board ci",
   "buildCommand": "npm --prefix kanban-board run build",
-  "outputDirectory": "kanban-board/dist"
+  "outputDirectory": "kanban-board/dist",
+  "functions": {
+    "kanban-board/api/**/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth/[...handler]"
+    }
+  ]
 }
