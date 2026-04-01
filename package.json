@@ -3,13 +3,20 @@
   "private": true,
   "scripts": {
     "dev": "npm --prefix kanban-board run dev",
+    "auth:dev": "npm --prefix better-auth-server run dev",
+    "auth:start": "npm --prefix better-auth-server run start",
+    "auth:install": "npm --prefix better-auth-server install",
     "build": "npm --prefix kanban-board ci && npm --prefix kanban-board run build",
     "typecheck": "npm --prefix kanban-board run typecheck",
     "lint": "npm --prefix kanban-board run lint",
     "preview": "npm --prefix kanban-board run preview",
+    "convex:dev": "npm --prefix kanban-board run convex:dev",
+    "convex:deploy": "npm --prefix kanban-board run convex:deploy",
+    "convex:codegen": "npm --prefix kanban-board run convex:codegen",
     "install:app": "npm --prefix kanban-board install"
   },
   "dependencies": {
+    "@better-auth/infra": "^0.1.13",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",

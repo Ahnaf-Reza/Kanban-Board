@@ -11,6 +11,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SortableColumn } from "../../components/board/SortableColumn";
 import { TaskCard } from "../../components/board/TaskCard.tsx";
@@ -24,12 +25,11 @@ export function BoardView() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [pendingColumnDelete, setPendingColumnDelete] = useState<{ id: ColumnId; title: string } | null>(null);
-  const hasInitializedColumns = useRef(false);
+  const seenColumnIdsRef = useRef<Set<string>>(new Set());
 
   const tasks = useBoardStore((state) => state.tasks);
   const columns = useBoardStore((state) => state.columns);
   const columnOrder = useBoardStore((state) => state.columnOrder);
-  const addColumn = useBoardStore((state) => state.addColumn);
   const addTask = useBoardStore((state) => state.addTask);
   const moveTask = useBoardStore((state) => state.moveTask);
   const deleteTask = useBoardStore((state) => state.deleteTask);
@@ -48,6 +48,7 @@ export function BoardView() {
   }, [tasks, searchQuery]);
 
   const filteredTaskIds = useMemo(() => new Set(filteredTasks.map((task) => task.id)), [filteredTasks]);
+  const normalizedQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
 
   const columnData = useMemo(
     () =>
@@ -56,10 +57,15 @@ export function BoardView() {
           const column = columns[columnId];
           if (!column) return null;
 
+          const columnMatchesQuery = normalizedQuery.length > 0 && column.title.toLowerCase().includes(normalizedQuery);
           const columnTasks = column.taskIds
-            .filter((taskId) => (searchQuery.trim() ? filteredTaskIds.has(taskId) : true))
+            .filter((taskId) => (normalizedQuery ? filteredTaskIds.has(taskId) : true))
             .map((taskId) => tasks[taskId])
             .filter((task): task is Task => Boolean(task));
+
+          if (normalizedQuery && columnTasks.length === 0 && !columnMatchesQuery) {
+            return null;
+          }
 
           return {
             columnId,
@@ -68,20 +74,14 @@ export function BoardView() {
           };
         })
         .filter((item): item is { columnId: ColumnId; column: BoardColumn; columnTasks: Task[] } => item !== null),
-      [columnOrder, columns, filteredTaskIds, searchQuery, tasks],
+      [columnOrder, columns, filteredTaskIds, normalizedQuery, tasks],
   );
 
   useEffect(() => {
-    if (hasInitializedColumns.current) return;
-
-    if (columnOrder.length === 0) {
-      addColumn("To Do");
-      addColumn("In Progress");
-      addColumn("Done");
+    for (const item of columnData) {
+      seenColumnIdsRef.current.add(item.columnId);
     }
-
-    hasInitializedColumns.current = true;
-  }, [addColumn, columnOrder.length]);
+  }, [columnData]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -123,7 +123,9 @@ export function BoardView() {
     setActiveTask(task);
   };
 
-  const handleDragOver = (_event: DragOverEvent) => {};
+  const handleDragOver = (_event: DragOverEvent) => {
+    void _event;
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -187,18 +189,28 @@ export function BoardView() {
         />
       </div>
 
-      <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+      <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
         <div className="flex gap-4 overflow-x-auto p-4">
-          {columnData.map(({ columnId, column, columnTasks }) => (
-            <SortableColumn
-              key={columnId}
-              column={column}
-              tasks={columnTasks}
-              onAddTask={(content) => addTask(column.id, content)}
-              onDeleteTask={(taskId) => deleteTask(taskId, column.id)}
-              onDeleteColumn={() => setPendingColumnDelete({ id: column.id, title: column.title })}
-            />
-          ))}
+          <AnimatePresence initial={false}>
+            {columnData.map(({ columnId, column, columnTasks }) => (
+              <motion.div
+                key={columnId}
+                layout
+                initial={seenColumnIdsRef.current.has(columnId) ? false : { opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -24 }}
+                transition={{ duration: 0.22 }}
+              >
+                <SortableColumn
+                  column={column}
+                  tasks={columnTasks}
+                  onAddTask={(content) => addTask(column.id, content)}
+                  onDeleteTask={(taskId) => deleteTask(taskId, column.id)}
+                  onDeleteColumn={() => setPendingColumnDelete({ id: column.id, title: column.title })}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </SortableContext>
 

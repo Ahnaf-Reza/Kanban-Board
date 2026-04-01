@@ -4,8 +4,15 @@ import { immer } from "zustand/middleware/immer";
 import { current } from "immer";
 import type { BoardState, ColumnId, Task, TaskId } from "../types/board";
 import { toBoardState } from "../utils/boardGuards";
+import { getConvexClient } from "../lib/convexClient";
+import { convexRefs } from "../lib/convexRefs";
 
 interface BoardStore extends BoardState {
+  boardId: string | null;
+  isRemoteLoading: boolean;
+  remoteError: string | null;
+  initializeFromRemote: () => Promise<void>;
+  resetForSignOut: () => void;
   addTask: (columnId: ColumnId, content: string) => void;
   moveTask: (taskId: TaskId, from: ColumnId, to: ColumnId, toIndex: number) => void;
   updateTask: (taskId: TaskId, updates: Partial<Task>) => void;
@@ -20,13 +27,68 @@ interface BoardStore extends BoardState {
   pushToHistory: () => void;
 }
 
-const generateId = () => crypto.randomUUID();
-
 const createSnapshot = (state: BoardState): BoardState => ({
   tasks: structuredClone(state.tasks),
   columns: structuredClone(state.columns),
   columnOrder: [...state.columnOrder],
 });
+
+type RemoteBoardData = {
+  board: {
+    id: string;
+    slug: string;
+    title: string;
+    createdAt: number;
+    updatedAt: number;
+  };
+  state: {
+    tasks: Record<
+      string,
+      {
+        id: string;
+        content: string;
+        createdAt: number;
+        updatedAt: number;
+      }
+    >;
+    columns: Record<
+      string,
+      {
+        id: string;
+        title: string;
+        taskIds: string[];
+      }
+    >;
+    columnOrder: string[];
+  };
+};
+
+const toLocalState = (remote: RemoteBoardData): BoardState => {
+  const tasks: Record<TaskId, Task> = {};
+  for (const [taskId, task] of Object.entries(remote.state.tasks)) {
+    tasks[taskId as TaskId] = {
+      id: task.id as TaskId,
+      content: task.content,
+      createdAt: new Date(task.createdAt),
+      updatedAt: new Date(task.updatedAt),
+    };
+  }
+
+  const columns: BoardState["columns"] = {};
+  for (const [columnId, column] of Object.entries(remote.state.columns)) {
+    columns[columnId as ColumnId] = {
+      id: column.id as ColumnId,
+      title: column.title,
+      taskIds: column.taskIds as TaskId[],
+    };
+  }
+
+  return {
+    tasks,
+    columns,
+    columnOrder: remote.state.columnOrder as ColumnId[],
+  };
+};
 
 const initialBoardState: BoardState = {
   tasks: {},
@@ -36,26 +98,101 @@ const initialBoardState: BoardState = {
 
 export const useBoardStore = create<BoardStore>()(
   persist(
-    immer((set, get) => ({
-      ...initialBoardState,
-      history: [createSnapshot(initialBoardState)],
-      historyIndex: 0,
+    immer((set, get) => {
+      const syncFromRemote = async (showLoading = false) => {
+        const client = getConvexClient();
+        if (!client) {
+          set((state) => {
+            state.remoteError = "VITE_CONVEX_URL is missing. Add it to .env.local.";
+            state.isRemoteLoading = false;
+          });
+          return;
+        }
+
+        if (showLoading) {
+          set((state) => {
+            state.isRemoteLoading = true;
+            state.remoteError = null;
+          });
+        } else {
+          set((state) => {
+            state.remoteError = null;
+          });
+        }
+
+        try {
+          const boardId = (await client.mutation(convexRefs.bootstrapDefaultBoard, {})) as string;
+          const remote = (await client.query(convexRefs.getBoard, {
+            slug: "default",
+          })) as RemoteBoardData | null;
+
+          if (!remote) {
+            throw new Error("Board not found after bootstrap");
+          }
+
+          const parsed = toLocalState(remote);
+          set((state) => {
+            state.tasks = parsed.tasks;
+            state.columns = parsed.columns;
+            state.columnOrder = parsed.columnOrder;
+            state.boardId = boardId;
+            state.history = [createSnapshot(parsed)];
+            state.historyIndex = 0;
+            state.isRemoteLoading = false;
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to sync board";
+          set((state) => {
+            state.remoteError = message;
+            state.isRemoteLoading = false;
+          });
+        }
+      };
+
+      return {
+        ...initialBoardState,
+        boardId: null,
+        isRemoteLoading: false,
+        remoteError: null,
+        history: [createSnapshot(initialBoardState)],
+        historyIndex: 0,
+
+        initializeFromRemote: async () => {
+          await syncFromRemote(true);
+        },
+
+        resetForSignOut: () => {
+          set((state) => {
+            state.tasks = {};
+            state.columns = {};
+            state.columnOrder = [];
+            state.boardId = null;
+            state.isRemoteLoading = false;
+            state.remoteError = null;
+            state.history = [createSnapshot(initialBoardState)];
+            state.historyIndex = 0;
+          });
+        },
 
       addTask: (columnId, content) => {
-        const taskId = generateId() as TaskId;
-        set((state) => {
-          const column = state.columns[columnId];
-          if (!column) return;
+        const client = getConvexClient();
+        if (!client) return;
 
-          state.tasks[taskId] = {
-            id: taskId,
-            content,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-          column.taskIds.push(taskId);
-        });
-        get().pushToHistory();
+        void (async () => {
+          try {
+            await client.mutation(convexRefs.addTask, {
+              columnId,
+              content,
+            });
+            await syncFromRemote(false);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to add task";
+            set((state) => {
+              state.remoteError = message;
+            });
+            await syncFromRemote(false);
+          }
+        })();
       },
 
       moveTask: (taskId, from, to, toIndex) => {
@@ -75,6 +212,25 @@ export const useBoardStore = create<BoardStore>()(
           task.updatedAt = new Date();
         });
         get().pushToHistory();
+
+        const client = getConvexClient();
+        if (!client) return;
+
+        void (async () => {
+          try {
+            await client.mutation(convexRefs.moveTask, {
+              taskId,
+              toColumnId: to,
+              toIndex,
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to move task";
+            set((state) => {
+              state.remoteError = message;
+            });
+            await syncFromRemote();
+          }
+        })();
       },
 
       updateTask: (taskId, updates) => {
@@ -99,37 +255,68 @@ export const useBoardStore = create<BoardStore>()(
           delete state.tasks[taskId];
         });
         get().pushToHistory();
+
+        const client = getConvexClient();
+        if (!client) return;
+
+        void (async () => {
+          try {
+            await client.mutation(convexRefs.deleteTask, {
+              taskId,
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to delete task";
+            set((state) => {
+              state.remoteError = message;
+            });
+            await syncFromRemote();
+          }
+        })();
       },
 
       addColumn: (title) => {
-        const columnId = generateId() as ColumnId;
-        set((state) => {
-          state.columns[columnId] = {
-            id: columnId,
-            title,
-            taskIds: [],
-          };
-          state.columnOrder.push(columnId);
-        });
-        get().pushToHistory();
+        const client = getConvexClient();
+        const boardId = get().boardId;
+        if (!client || !boardId) return;
+
+        void (async () => {
+          try {
+            await client.mutation(convexRefs.addColumn, {
+              boardId,
+              title,
+            });
+            await syncFromRemote(false);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to add column";
+            set((state) => {
+              state.remoteError = message;
+            });
+            await syncFromRemote(false);
+          }
+        })();
       },
 
       deleteColumn: (columnId) => {
-        set((state) => {
-          const column = state.columns[columnId];
-          if (!column) return;
+        const client = getConvexClient();
+        if (!client) return;
 
-          for (const taskId of column.taskIds) {
-            delete state.tasks[taskId];
+        void (async () => {
+          try {
+            await client.mutation(convexRefs.deleteColumn, {
+              columnId,
+            });
+            await syncFromRemote(false);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to delete column";
+            set((state) => {
+              state.remoteError = message;
+            });
           }
-
-          delete state.columns[columnId];
-          state.columnOrder = state.columnOrder.filter((id) => id !== columnId);
-        });
-        get().pushToHistory();
+        })();
       },
 
       reorderColumns: (fromIndex, toIndex) => {
+        const boardId = get().boardId;
         set((state) => {
           const { columnOrder } = state;
           if (
@@ -145,6 +332,28 @@ export const useBoardStore = create<BoardStore>()(
           columnOrder.splice(toIndex, 0, moved);
         });
         get().pushToHistory();
+
+        if (!boardId) return;
+
+        const client = getConvexClient();
+        if (!client) return;
+
+        const nextOrder = [...get().columnOrder];
+
+        void (async () => {
+          try {
+            await client.mutation(convexRefs.reorderColumns, {
+              boardId,
+              columnIds: nextOrder,
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to reorder columns";
+            set((state) => {
+              state.remoteError = message;
+            });
+            await syncFromRemote();
+          }
+        })();
       },
 
       pushToHistory: () => {
@@ -183,7 +392,8 @@ export const useBoardStore = create<BoardStore>()(
           state.historyIndex = historyIndex + 1;
         });
       },
-    })),
+    };
+    }),
     {
       name: "kanban-board-storage",
       merge: (persistedState, currentState) => {
@@ -197,6 +407,9 @@ export const useBoardStore = create<BoardStore>()(
           tasks: parsed.tasks,
           columns: parsed.columns,
           columnOrder: parsed.columnOrder,
+          boardId: null,
+          isRemoteLoading: false,
+          remoteError: null,
           history: [createSnapshot(parsed)],
           historyIndex: 0,
         };

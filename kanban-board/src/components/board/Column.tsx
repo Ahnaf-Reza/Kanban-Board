@@ -29,15 +29,28 @@ export function Column({
   const [isCreating, setIsCreating] = useState(false);
   const [draft, setDraft] = useState("");
   const previousTaskCountRef = useRef(tasks.length);
+  const seenTaskIdsRef = useRef<Set<string>>(new Set(tasks.map((task) => task.id)));
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
+
+  useEffect(() => {
+    for (const task of tasks) {
+      seenTaskIdsRef.current.add(task.id);
+    }
+  }, [tasks]);
 
   useEffect(() => {
     const previousCount = previousTaskCountRef.current;
     const taskAdded = tasks.length > previousCount;
 
     if (isCreating && taskAdded) {
-      setDraft("");
-      setIsCreating(false);
+      previousTaskCountRef.current = tasks.length;
+
+      const timeoutId = window.setTimeout(() => {
+        setDraft("");
+        setIsCreating(false);
+      }, 0);
+
+      return () => window.clearTimeout(timeoutId);
     }
 
     previousTaskCountRef.current = tasks.length;
@@ -93,9 +106,9 @@ export function Column({
           <AnimatePresence initial={false}>
             {tasks.map((task) => (
               <motion.div
-                key={`${task.id}-${task.updatedAt.getTime()}`}
+                key={task.id}
                 layout
-                initial={{ opacity: 0, y: -10 }}
+                initial={seenTaskIdsRef.current.has(task.id) ? false : { opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.2 }}

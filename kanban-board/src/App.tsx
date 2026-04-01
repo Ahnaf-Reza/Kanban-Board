@@ -1,28 +1,98 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { BoardView } from "./features/board/BoardView";
+import { AuthPanel } from "./features/auth/AuthPanel";
 import { Button } from "./components/ui/Button";
 import { Input } from "./components/ui/Input";
 import { Modal } from "./components/ui/Modal";
 import { useDarkMode } from "./hooks/useDarkMode";
+import { useBetterAuthSession } from "./hooks/useBetterAuthSession";
+import { getConfiguredOauthProviders } from "./lib/authClient";
+import { getConvexClient } from "./lib/convexClient";
+import { convexRefs } from "./lib/convexRefs";
 import { useBoardStore } from "./store/boardStore";
 
 function App() {
   const { isDark, toggle } = useDarkMode();
+  const {
+    isLoading: isAuthLoading,
+    isAuthenticated,
+    isTokenReady,
+    authError,
+    sessionUser,
+    signInWithEmail,
+    signUpWithEmail,
+    signInWithOAuth,
+    signOut,
+  } = useBetterAuthSession();
+
   const [isCreateColumnOpen, setIsCreateColumnOpen] = useState(false);
   const [columnTitle, setColumnTitle] = useState("");
 
   const addColumn = useBoardStore((state) => state.addColumn);
+  const initializeFromRemote = useBoardStore((state) => state.initializeFromRemote);
+  const resetForSignOut = useBoardStore((state) => state.resetForSignOut);
   const undo = useBoardStore((state) => state.undo);
   const redo = useBoardStore((state) => state.redo);
   const historyIndex = useBoardStore((state) => state.historyIndex);
   const historyLength = useBoardStore((state) => state.history.length);
   const tasks = useBoardStore((state) => state.tasks);
   const columns = useBoardStore((state) => state.columns);
+  const isRemoteLoading = useBoardStore((state) => state.isRemoteLoading);
+  const remoteError = useBoardStore((state) => state.remoteError);
 
   const taskCount = useMemo(() => Object.keys(tasks).length, [tasks]);
   const columnCount = useMemo(() => Object.keys(columns).length, [columns]);
   const previousColumnCountRef = useRef(columnCount);
+  const oauthProviders = useMemo(() => getConfiguredOauthProviders(), []);
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      resetForSignOut();
+      return;
+    }
+
+    if (!isTokenReady) {
+      return;
+    }
+
+    void initializeFromRemote();
+  }, [initializeFromRemote, isAuthenticated, isTokenReady, resetForSignOut]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isTokenReady || !sessionUser) {
+      return;
+    }
+
+    const client = getConvexClient();
+    if (!client) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const upsertWithRetry = async () => {
+      while (!cancelled) {
+        try {
+          await client.mutation(convexRefs.upsertCurrentUser, {
+            name: sessionUser.name || undefined,
+            avatarUrl: sessionUser.image || undefined,
+          });
+          return;
+        } catch {
+          // Keep this non-fatal for UX; retry in background.
+          await new Promise((resolve) => window.setTimeout(resolve, 5000));
+        }
+      }
+    };
+
+    void upsertWithRetry();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isTokenReady, sessionUser]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -63,8 +133,73 @@ function App() {
     setIsCreateColumnOpen(false);
   };
 
+  const handleSignIn = async (email: string, password: string) => {
+    setIsAuthSubmitting(true);
+    try {
+      await signInWithEmail(email, password);
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  };
+
+  const handleSignUp = async (name: string, email: string, password: string) => {
+    setIsAuthSubmitting(true);
+    try {
+      await signUpWithEmail(name, email, password);
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  };
+
+  const handleOAuthSignIn = async (provider: string) => {
+    setIsAuthSubmitting(true);
+    try {
+      await signInWithOAuth(provider);
+    } finally {
+      setIsAuthSubmitting(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    resetForSignOut();
+  };
+
+  const backgroundClassName =
+    "min-h-screen bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.18),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(236,72,153,0.12),transparent_35%),linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)] text-slate-900 transition-colors dark:bg-[radial-gradient(circle_at_15%_15%,rgba(14,116,144,0.35),transparent_42%),radial-gradient(circle_at_85%_0%,rgba(126,34,206,0.2),transparent_35%),linear-gradient(180deg,#020617_0%,#111827_100%)] dark:text-slate-100";
+
+  if (!isAuthenticated) {
+    return (
+      <main className={backgroundClassName}>
+        <div className="mx-auto flex w-full max-w-7xl justify-end px-4 pt-6 md:px-8">
+          <Button variant="secondary" onClick={toggle}>
+            {isDark ? "Light" : "Dark"} Mode
+          </Button>
+        </div>
+        <AuthPanel
+          authError={authError}
+          oauthProviders={oauthProviders}
+          isSubmitting={isAuthSubmitting || isAuthLoading}
+          onSignIn={handleSignIn}
+          onSignUp={handleSignUp}
+          onOAuthSignIn={handleOAuthSignIn}
+        />
+      </main>
+    );
+  }
+
+  if (isAuthLoading || !isTokenReady) {
+    return (
+      <main className={`${backgroundClassName} flex items-center justify-center`}>
+        <p className="rounded-xl border border-white/40 bg-white/75 px-5 py-3 text-sm font-medium shadow-lg backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/75">
+          Establishing secure session...
+        </p>
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.18),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(236,72,153,0.12),transparent_35%),linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)] text-slate-900 transition-colors dark:bg-[radial-gradient(circle_at_15%_15%,rgba(14,116,144,0.35),transparent_42%),radial-gradient(circle_at_85%_0%,rgba(126,34,206,0.2),transparent_35%),linear-gradient(180deg,#020617_0%,#111827_100%)] dark:text-slate-100">
+    <main className={backgroundClassName}>
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-8 pt-6 md:px-8">
         <header className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -74,6 +209,11 @@ function App() {
               <p className="mt-2 max-w-2xl text-sm text-slate-700 dark:text-slate-300">
                 Drag tasks across columns, edit inline with debounced autosave, and recover quickly with undo/redo.
               </p>
+              {sessionUser?.email ? (
+                <p className="mt-2 text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                  Signed in as {sessionUser.email}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -87,6 +227,9 @@ function App() {
                 Redo
               </Button>
               <Button onClick={() => setIsCreateColumnOpen(true)}>Add Column</Button>
+              <Button variant="danger" onClick={() => void handleSignOut()}>
+                Sign Out
+              </Button>
             </div>
           </div>
 
@@ -104,6 +247,12 @@ function App() {
               <p className="text-xl font-semibold">{historyIndex + 1}</p>
             </div>
           </div>
+
+          {remoteError ? (
+            <p className="mt-2 text-xs font-medium text-rose-700 dark:text-rose-300">
+              We could not sync your board right now. Please refresh and try again.
+            </p>
+          ) : null}
         </header>
 
         <BoardView />

@@ -16,6 +16,8 @@ https://your-kanban.vercel.app
 - dnd-kit (drag and drop)
 - Framer Motion (animations)
 - Tailwind CSS 4
+- Better Auth (email/password + OAuth + JWT token endpoint)
+- Convex (database + authenticated API)
 
 ## Architecture Decisions
 
@@ -102,6 +104,29 @@ Install and run:
 
 1. npm install
 2. npm run dev
+
+## Convex Backend
+
+Convex backend scaffold and setup instructions are documented in `CONVEX_BACKEND_SETUP.md`.
+
+## Authentication
+
+Authentication is now powered by Better Auth.
+
+- Sign up, sign in, and sign out are implemented in the app UI.
+- OAuth provider buttons are rendered from `VITE_BETTER_AUTH_OAUTH_PROVIDERS`.
+- Convex requests are authenticated with JWT access tokens from Better Auth `GET /token`.
+- Board data is scoped per authenticated user in Convex.
+
+Minimum frontend env vars:
+
+```env
+VITE_CONVEX_URL=https://YOUR_DEPLOYMENT.convex.cloud
+VITE_BETTER_AUTH_URL=http://localhost:3000/api/auth
+VITE_BETTER_AUTH_OAUTH_PROVIDERS=google,github
+```
+
+Important: `convex/auth.config.ts` must point to your Better Auth issuer and audience (`applicationID`) must match the JWT `aud` claim (default in this project: `convex`).
 
 Useful scripts:
 

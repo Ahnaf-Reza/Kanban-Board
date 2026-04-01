@@ -1,2 +1,10 @@
-# Ignore the instruction-heavy root README in this workspace repo
+
 /README.md
+
+# Local environment secrets
+.env
+.env.*
+!.env.example
+better-auth-server/.env
+kanban-board/.env.local
+node_modules
