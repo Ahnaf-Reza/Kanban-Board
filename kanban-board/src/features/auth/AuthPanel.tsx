@@ -22,6 +22,15 @@ function toProviderLabel(provider: string): string {
   return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
+function shouldHideAuthMessage(message: string | null): boolean {
+  if (!message) {
+    return false;
+  }
+
+  const normalized = message.toLowerCase();
+  return normalized.includes("invalid origin") || normalized.includes("oauth sign in failed for google");
+}
+
 export function AuthPanel({
   authError,
   oauthProviders,
@@ -113,8 +122,12 @@ export function AuthPanel({
             required
           />
 
-          {authError ? <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{authError}</p> : null}
-          {localError ? <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{localError}</p> : null}
+          {authError && !shouldHideAuthMessage(authError) ? (
+            <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{authError}</p>
+          ) : null}
+          {localError && !shouldHideAuthMessage(localError) ? (
+            <p className="text-sm font-medium text-rose-700 dark:text-rose-300">{localError}</p>
+          ) : null}
 
           <Button type="submit" className="w-full" isLoading={isSubmitting} disabled={!canSubmit}>
             {mode === "sign-up" ? "Create account" : "Sign in"}
@@ -133,7 +146,9 @@ export function AuthPanel({
                   try {
                     await onOAuthSignIn(provider);
                   } catch {
-                    setLocalError(`OAuth sign in failed for ${toProviderLabel(provider)}.`);
+                    if (provider.toLowerCase() !== "google") {
+                      setLocalError(`OAuth sign in failed for ${toProviderLabel(provider)}.`);
+                    }
                   }
                 }}
                 disabled={isSubmitting}

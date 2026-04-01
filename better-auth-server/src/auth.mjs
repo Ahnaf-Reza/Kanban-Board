@@ -21,9 +21,17 @@ function getCsvEnv(name, fallback) {
 
 const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000/api/auth";
 const jwtIssuer = process.env.BETTER_AUTH_JWT_ISSUER ?? baseURL;
+const defaultTrustedOrigins = (() => {
+  try {
+    const authOrigin = new URL(baseURL).origin;
+    return [authOrigin, "http://localhost:5173", "http://localhost:4173"];
+  } catch {
+    return ["http://localhost:5173", "http://localhost:4173"];
+  }
+})();
 const trustedOrigins = getCsvEnv(
   "BETTER_AUTH_TRUSTED_ORIGINS",
-  "http://localhost:5173,http://localhost:4173",
+  Array.from(new Set(defaultTrustedOrigins)).join(","),
 );
 
 const plugins = [

@@ -31,9 +31,17 @@ function getTrimmedEnv(name, fallback) {
 
 const baseURL = getTrimmedEnv("BETTER_AUTH_URL", "https://your-vercel-project.vercel.app/api/auth");
 const jwtIssuer = getTrimmedEnv("BETTER_AUTH_JWT_ISSUER", baseURL);
+const defaultTrustedOrigins = (() => {
+  try {
+    const authOrigin = new URL(baseURL).origin;
+    return [authOrigin, "http://localhost:5173", "http://localhost:4173"];
+  } catch {
+    return ["http://localhost:5173", "http://localhost:4173"];
+  }
+})();
 const trustedOrigins = getCsvEnv(
   "BETTER_AUTH_TRUSTED_ORIGINS",
-  "http://localhost:5173,http://localhost:4173"
+  Array.from(new Set(defaultTrustedOrigins)).join(",")
 );
 
 const plugins = [
