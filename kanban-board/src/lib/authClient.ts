@@ -62,7 +62,7 @@ export async function fetchConvexJwtToken(): Promise<string | null> {
 export function getConfiguredOauthProviders(): string[] {
   const raw = import.meta.env.VITE_BETTER_AUTH_OAUTH_PROVIDERS as string | undefined;
   if (!raw) {
-    return [];
+    return ["google"];
   }
 
   return raw
