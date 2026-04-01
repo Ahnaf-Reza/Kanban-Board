@@ -49,9 +49,9 @@ function resolveTrustedOrigins(baseUrl) {
 
 function getDatabaseUrl() {
 	const candidates = [
-		process.env.DATABASE_URL,
 		process.env.POSTGRES_PRISMA_URL,
 		process.env.POSTGRES_URL,
+		process.env.DATABASE_URL,
 	];
 
 	for (const value of candidates) {
