@@ -4,11 +4,6 @@
   "installCommand": "npm --prefix kanban-board ci",
   "buildCommand": "npm --prefix kanban-board run build",
   "outputDirectory": "kanban-board/dist",
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/auth/:path*",
