@@ -24,9 +24,9 @@ const jwtIssuer = process.env.BETTER_AUTH_JWT_ISSUER ?? baseURL;
 const defaultTrustedOrigins = (() => {
   try {
     const authOrigin = new URL(baseURL).origin;
-    return [authOrigin, "http://localhost:5173", "http://localhost:4173"];
+    return [authOrigin, "https://**.vercel.app", "http://localhost:5173", "http://localhost:4173"];
   } catch {
-    return ["http://localhost:5173", "http://localhost:4173"];
+    return ["https://**.vercel.app", "http://localhost:5173", "http://localhost:4173"];
   }
 })();
 const trustedOrigins = getCsvEnv(
