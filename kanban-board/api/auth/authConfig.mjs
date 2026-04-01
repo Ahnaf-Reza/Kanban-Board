@@ -20,6 +20,33 @@ function getTrimmedEnv(name, fallback) {
 	return fallback;
 }
 
+function resolveDefaultBaseUrl() {
+	const vercelUrl = getTrimmedEnv("VERCEL_URL", "");
+	if (vercelUrl) {
+		return `https://${vercelUrl}/api/auth`;
+	}
+
+	return "http://localhost:3000/api/auth";
+}
+
+function resolveTrustedOrigins(baseUrl) {
+	const defaultTrustedOrigins = (() => {
+		try {
+			const authOrigin = new URL(baseUrl).origin;
+			return [authOrigin, "https://**.vercel.app", "http://localhost:5173", "http://localhost:4173"];
+		} catch {
+			return ["https://**.vercel.app", "http://localhost:5173", "http://localhost:4173"];
+		}
+	})();
+
+	const configured = getCsvEnv("BETTER_AUTH_TRUSTED_ORIGINS", "");
+	if (configured.length === 0) {
+		return defaultTrustedOrigins;
+	}
+
+	return Array.from(new Set([...defaultTrustedOrigins, ...configured]));
+}
+
 function getDatabaseUrl() {
 	const raw = process.env.DATABASE_URL;
 	if (typeof raw === "string" && raw.trim().length > 0) {
@@ -29,20 +56,9 @@ function getDatabaseUrl() {
 	throw new Error("DATABASE_URL is required for Better Auth persistence.");
 }
 
-const baseURL = getTrimmedEnv("BETTER_AUTH_URL", "https://your-vercel-project.vercel.app/api/auth");
+const baseURL = getTrimmedEnv("BETTER_AUTH_URL", resolveDefaultBaseUrl());
 const jwtIssuer = getTrimmedEnv("BETTER_AUTH_JWT_ISSUER", baseURL);
-const defaultTrustedOrigins = (() => {
-	try {
-		const authOrigin = new URL(baseURL).origin;
-		return [authOrigin, "https://**.vercel.app", "http://localhost:5173", "http://localhost:4173"];
-	} catch {
-		return ["https://**.vercel.app", "http://localhost:5173", "http://localhost:4173"];
-	}
-})();
-const trustedOrigins = getCsvEnv(
-	"BETTER_AUTH_TRUSTED_ORIGINS",
-	Array.from(new Set(defaultTrustedOrigins)).join(",")
-);
+const trustedOrigins = resolveTrustedOrigins(baseURL);
 
 const databaseUrl = getDatabaseUrl();
 const prisma =
