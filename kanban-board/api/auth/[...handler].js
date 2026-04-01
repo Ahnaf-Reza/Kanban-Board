@@ -55,6 +55,13 @@ const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET ?? "dev-only-secret-change-this",
   database: memoryAdapter(memoryDb),
   trustedOrigins,
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+      updateUserInfoOnLink: true,
+    },
+  },
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
