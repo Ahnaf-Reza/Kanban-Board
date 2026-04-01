@@ -4,6 +4,13 @@ function resolveBetterAuthBaseUrl(): string {
   const raw = (import.meta.env.VITE_BETTER_AUTH_URL as string | undefined)?.trim() || "/api/auth";
 
   if (/^https?:\/\//i.test(raw)) {
+    if (typeof window !== "undefined") {
+      const configuredUrl = new URL(raw);
+      // Avoid cross-origin auth calls in the browser to prevent CORS/cookie issues.
+      if (configuredUrl.origin !== window.location.origin) {
+        return new URL("/api/auth", window.location.origin).toString();
+      }
+    }
     return raw;
   }
 
