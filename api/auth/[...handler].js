@@ -1,28 +1,15 @@
 import handler from "../../kanban-board/api/auth/[...handler].js";
-
-function getTrimmedEnv(name, fallback) {
-	const raw = process.env[name];
-	if (typeof raw === "string" && raw.trim().length > 0) {
-		return raw.trim();
-	}
-
-	return fallback;
-}
+import { baseURL as authBaseUrl, jwtIssuer } from "../../kanban-board/api/auth/authConfig.mjs";
 
 function writeJson(res, statusCode, payload) {
 	res.writeHead(statusCode, { "content-type": "application/json" });
 	res.end(JSON.stringify(payload));
 }
 
-function getAuthBaseUrl() {
-	return getTrimmedEnv("BETTER_AUTH_URL", "https://kanban-board-gules-three.vercel.app/api/auth");
-}
-
 export default async function authHandler(req, res) {
 	const host = req.headers.host ?? "kanban-board-gules-three.vercel.app";
 	const url = new URL(req.url ?? "/", `https://${host}`);
-	const baseURL = getAuthBaseUrl();
-	const issuer = getTrimmedEnv("BETTER_AUTH_JWT_ISSUER", baseURL);
+	const baseURL = authBaseUrl;
 
 	if (
 		url.pathname === "/api/auth/.well-known/openid-configuration" ||
