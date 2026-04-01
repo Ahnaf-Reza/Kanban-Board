@@ -48,12 +48,21 @@ function resolveTrustedOrigins(baseUrl) {
 }
 
 function getDatabaseUrl() {
-	const raw = process.env.DATABASE_URL;
-	if (typeof raw === "string" && raw.trim().length > 0) {
-		return raw.trim();
+	const candidates = [
+		process.env.DATABASE_URL,
+		process.env.POSTGRES_PRISMA_URL,
+		process.env.POSTGRES_URL,
+	];
+
+	for (const value of candidates) {
+		if (typeof value === "string" && value.trim().length > 0) {
+			return value.trim();
+		}
 	}
 
-	throw new Error("DATABASE_URL is required for Better Auth persistence.");
+	throw new Error(
+		"A Postgres URL is required. Set DATABASE_URL (or POSTGRES_PRISMA_URL / POSTGRES_URL) in the runtime environment."
+	);
 }
 
 const baseURL = getTrimmedEnv("BETTER_AUTH_URL", resolveDefaultBaseUrl());
