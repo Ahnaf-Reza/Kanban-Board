@@ -3,7 +3,6 @@ import { toNodeHandler } from "better-auth/node";
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { memoryAdapter } from "@better-auth/memory-adapter";
-import { dash } from "@better-auth/infra";
 
 const memoryDb = {
   user: [],
@@ -37,10 +36,6 @@ const plugins = [
     },
   }),
 ];
-
-if (process.env.BETTER_AUTH_API_KEY) {
-  plugins.push(dash());
-}
 
 const hasGoogleOAuth = Boolean(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
