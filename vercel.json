@@ -5,7 +5,7 @@
   "buildCommand": "npm --prefix kanban-board run build",
   "outputDirectory": "kanban-board/dist",
   "functions": {
-    "kanban-board/api/**/*.js": {
+    "api/**/*.js": {
       "runtime": "nodejs20.x"
     }
   },
