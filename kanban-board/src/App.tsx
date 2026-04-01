@@ -166,6 +166,16 @@ function App() {
   const backgroundClassName =
     "min-h-screen bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.18),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(236,72,153,0.12),transparent_35%),linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)] text-slate-900 transition-colors dark:bg-[radial-gradient(circle_at_15%_15%,rgba(14,116,144,0.35),transparent_42%),radial-gradient(circle_at_85%_0%,rgba(126,34,206,0.2),transparent_35%),linear-gradient(180deg,#020617_0%,#111827_100%)] dark:text-slate-100";
 
+  if (isAuthLoading || (isAuthenticated && !isTokenReady)) {
+    return (
+      <main className={`${backgroundClassName} flex items-center justify-center`}>
+        <p className="rounded-xl border border-white/40 bg-white/75 px-5 py-3 text-sm font-medium shadow-lg backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/75">
+          Establishing secure session...
+        </p>
+      </main>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <main className={backgroundClassName}>
@@ -182,16 +192,6 @@ function App() {
           onSignUp={handleSignUp}
           onOAuthSignIn={handleOAuthSignIn}
         />
-      </main>
-    );
-  }
-
-  if (isAuthLoading || !isTokenReady) {
-    return (
-      <main className={`${backgroundClassName} flex items-center justify-center`}>
-        <p className="rounded-xl border border-white/40 bg-white/75 px-5 py-3 text-sm font-medium shadow-lg backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/75">
-          Establishing secure session...
-        </p>
       </main>
     );
   }
