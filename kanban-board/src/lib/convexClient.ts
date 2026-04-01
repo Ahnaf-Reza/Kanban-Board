@@ -5,6 +5,10 @@ const convexUrl = import.meta.env.VITE_CONVEX_URL;
 let singletonClient: ConvexHttpClient | null = null;
 let authToken: string | null = null;
 
+export function hasConvexAuthToken(): boolean {
+  return Boolean(authToken);
+}
+
 export function getConvexClient(): ConvexHttpClient | null {
   if (!convexUrl) {
     return null;

@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authClient, fetchConvexJwtToken } from "../lib/authClient";
-import { clearConvexAuthToken, setConvexAuthToken } from "../lib/convexClient";
+import { clearConvexAuthToken, hasConvexAuthToken, setConvexAuthToken } from "../lib/convexClient";
 
 const TOKEN_REFRESH_INTERVAL_MS = 4 * 60 * 1000;
+const TOKEN_REFRESH_RETRY_DELAY_MS = 1200;
+const TOKEN_REFRESH_MAX_RETRIES = 2;
+const MAX_CONSECUTIVE_REFRESH_FAILURES = 3;
 
 type AuthResultWithError = {
   error?: {
@@ -33,9 +36,28 @@ export function useBetterAuthSession() {
   const [isTokenSyncing, setIsTokenSyncing] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isTokenReady, setIsTokenReady] = useState(false);
+  const consecutiveRefreshFailuresRef = useRef(0);
+
+  const delay = useCallback((ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms)), []);
+
+  const fetchTokenWithRetry = useCallback(async (): Promise<string | null> => {
+    for (let attempt = 0; attempt <= TOKEN_REFRESH_MAX_RETRIES; attempt += 1) {
+      const token = await fetchConvexJwtToken();
+      if (token) {
+        return token;
+      }
+
+      if (attempt < TOKEN_REFRESH_MAX_RETRIES) {
+        await delay(TOKEN_REFRESH_RETRY_DELAY_MS * (attempt + 1));
+      }
+    }
+
+    return null;
+  }, [delay]);
 
   const syncConvexToken = useCallback(async () => {
     if (!sessionState.data) {
+      consecutiveRefreshFailuresRef.current = 0;
       clearConvexAuthToken();
       setIsTokenReady(false);
       return;
@@ -43,22 +65,32 @@ export function useBetterAuthSession() {
 
     setIsTokenSyncing(true);
     try {
-      const token = await fetchConvexJwtToken();
+      const token = await fetchTokenWithRetry();
       if (!token) {
         throw new Error("Failed to fetch Better Auth JWT token for Convex.");
       }
 
       setConvexAuthToken(token);
+      consecutiveRefreshFailuresRef.current = 0;
       setIsTokenReady(true);
       setAuthError(null);
     } catch (error) {
-      clearConvexAuthToken();
-      setIsTokenReady(false);
+      consecutiveRefreshFailuresRef.current += 1;
+      const hasExistingToken = hasConvexAuthToken();
+
+      if (!hasExistingToken || consecutiveRefreshFailuresRef.current >= MAX_CONSECUTIVE_REFRESH_FAILURES) {
+        clearConvexAuthToken();
+        setIsTokenReady(false);
+      } else {
+        // Keep the previous token during transient refresh failures to avoid auth flapping.
+        setIsTokenReady(true);
+      }
+
       setAuthError(getErrorMessage(error, "Unable to sync auth token."));
     } finally {
       setIsTokenSyncing(false);
     }
-  }, [sessionState.data]);
+  }, [fetchTokenWithRetry, sessionState.data]);
 
   useEffect(() => {
     if (sessionState.isPending) {
