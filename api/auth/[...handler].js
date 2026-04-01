@@ -53,7 +53,7 @@ export default async function authHandler(req, res) {
 	}
 
 	try {
-		return handler(req, res);
+		return await handler(req, res);
 	} catch (error) {
 		if (url.pathname.endsWith("/get-session")) {
 			// Secret rotation can invalidate existing signed session cookies.
