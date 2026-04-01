@@ -20,8 +20,17 @@ function getCsvEnv(name, fallback) {
     .filter((value) => value.length > 0);
 }
 
-const baseURL = process.env.BETTER_AUTH_URL ?? "https://your-vercel-project.vercel.app/api/auth";
-const jwtIssuer = process.env.BETTER_AUTH_JWT_ISSUER ?? baseURL;
+function getTrimmedEnv(name, fallback) {
+  const raw = process.env[name];
+  if (typeof raw === "string" && raw.trim().length > 0) {
+    return raw.trim();
+  }
+
+  return fallback;
+}
+
+const baseURL = getTrimmedEnv("BETTER_AUTH_URL", "https://your-vercel-project.vercel.app/api/auth");
+const jwtIssuer = getTrimmedEnv("BETTER_AUTH_JWT_ISSUER", baseURL);
 const trustedOrigins = getCsvEnv(
   "BETTER_AUTH_TRUSTED_ORIGINS",
   "http://localhost:5173,http://localhost:4173"
