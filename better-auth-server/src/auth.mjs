@@ -62,6 +62,21 @@ export const auth = betterAuth({
       updateUserInfoOnLink: true,
     },
   },
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/**": {
+        window: 60,
+        max: 25,
+      },
+      "/callback/**": {
+        window: 60,
+        max: 25,
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
