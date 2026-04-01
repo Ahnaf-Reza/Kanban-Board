@@ -1,7 +1,4 @@
 import { toNodeHandler } from "better-auth/node";
-import { auth, baseURL, jwtIssuer } from "./authConfig.mjs";
-
-const handler = toNodeHandler(auth);
 
 function writeJson(res, statusCode, payload) {
 	res.writeHead(statusCode, { "content-type": "application/json" });
@@ -9,6 +6,26 @@ function writeJson(res, statusCode, payload) {
 }
 
 export default async function authHandler(req, res) {
+	let handler;
+
+	try {
+		const authModule = await import("./authConfig.mjs");
+		handler = toNodeHandler(authModule.auth);
+	} catch (error) {
+		const path = req.url ?? "";
+		if (path.includes("get-session")) {
+			writeJson(res, 200, null);
+			return;
+		}
+
+		const message = error instanceof Error ? error.message : "Unknown auth init error";
+		writeJson(res, 500, {
+			error: "AUTH_INIT_FAILED",
+			message,
+		});
+		return;
+	}
+
 	try {
 		return await handler(req, res);
 	} catch (error) {
@@ -25,5 +42,3 @@ export default async function authHandler(req, res) {
 		});
 	}
 }
-
-export { auth, baseURL, jwtIssuer };
