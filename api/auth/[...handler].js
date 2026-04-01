@@ -15,6 +15,11 @@ export default async function authHandler(req, res) {
 		jwtIssuer = config.jwtIssuer;
 		handler = authModule.default;
 	} catch (error) {
+		if ((req.url ?? "").includes("get-session")) {
+			writeJson(res, 200, null);
+			return;
+		}
+
 		const message = error instanceof Error ? error.message : "Unknown auth startup error";
 		writeJson(res, 500, {
 			error: "AUTH_INIT_FAILED",
