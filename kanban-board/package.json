@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "postinstall": "npm run prisma:generate",
     "dev": "vite",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
     "convex:codegen": "convex codegen",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
-    "build": "tsc -b && vite build",
+    "build": "npm run prisma:generate && tsc -b && vite build",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview"
