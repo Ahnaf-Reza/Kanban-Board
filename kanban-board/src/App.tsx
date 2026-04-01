@@ -42,6 +42,13 @@ function App() {
 
   const taskCount = useMemo(() => Object.keys(tasks).length, [tasks]);
   const columnCount = useMemo(() => Object.keys(columns).length, [columns]);
+  const syncInsight = useMemo(() => {
+    if (!remoteError) {
+      return "All systems normal";
+    }
+
+    return remoteError.length > 120 ? `${remoteError.slice(0, 117)}...` : remoteError;
+  }, [remoteError]);
   const previousColumnCountRef = useRef(columnCount);
   const oauthProviders = useMemo(() => getConfiguredOauthProviders(), []);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
@@ -245,13 +252,20 @@ function App() {
               <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">History</p>
               <p className="text-xl font-semibold">{historyIndex + 1}</p>
             </div>
-          </div>
 
-          {remoteError ? (
-            <p className="mt-2 text-xs font-medium text-rose-700 dark:text-rose-300">
-              We could not sync your board right now. Please refresh and try again.
-            </p>
-          ) : null}
+            <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+              <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Sync</p>
+              <p className={`text-xl font-semibold ${remoteError ? "text-amber-600 dark:text-amber-300" : ""}`}>
+                {remoteError ? "Needs attention" : "Healthy"}
+              </p>
+              <p
+                className={`mt-1 text-xs ${remoteError ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-300"}`}
+                title={remoteError ?? "All systems normal"}
+              >
+                {syncInsight}
+              </p>
+            </div>
+          </div>
         </header>
 
         <BoardView />

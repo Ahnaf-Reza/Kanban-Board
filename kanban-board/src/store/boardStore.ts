@@ -96,6 +96,27 @@ const initialBoardState: BoardState = {
   columnOrder: [],
 };
 
+function toErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && typeof error.message === "string" && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+
+  try {
+    const serialized = JSON.stringify(error);
+    if (serialized && serialized !== "{}") {
+      return serialized;
+    }
+  } catch {
+    // Ignore serialization issues and return fallback.
+  }
+
+  return fallback;
+}
+
 export const useBoardStore = create<BoardStore>()(
   persist(
     immer((set, get) => {
@@ -141,7 +162,7 @@ export const useBoardStore = create<BoardStore>()(
             state.isRemoteLoading = false;
           });
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Failed to sync board";
+          const message = toErrorMessage(error, "Failed to sync board");
           set((state) => {
             state.remoteError = message;
             state.isRemoteLoading = false;
@@ -186,7 +207,7 @@ export const useBoardStore = create<BoardStore>()(
             });
             await syncFromRemote(false);
           } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to add task";
+            const message = toErrorMessage(error, "Failed to add task");
             set((state) => {
               state.remoteError = message;
             });
@@ -224,7 +245,7 @@ export const useBoardStore = create<BoardStore>()(
               toIndex,
             });
           } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to move task";
+            const message = toErrorMessage(error, "Failed to move task");
             set((state) => {
               state.remoteError = message;
             });
@@ -265,7 +286,7 @@ export const useBoardStore = create<BoardStore>()(
               taskId,
             });
           } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to delete task";
+            const message = toErrorMessage(error, "Failed to delete task");
             set((state) => {
               state.remoteError = message;
             });
@@ -287,7 +308,7 @@ export const useBoardStore = create<BoardStore>()(
             });
             await syncFromRemote(false);
           } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to add column";
+            const message = toErrorMessage(error, "Failed to add column");
             set((state) => {
               state.remoteError = message;
             });
@@ -307,7 +328,7 @@ export const useBoardStore = create<BoardStore>()(
             });
             await syncFromRemote(false);
           } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to delete column";
+            const message = toErrorMessage(error, "Failed to delete column");
             set((state) => {
               state.remoteError = message;
             });
@@ -347,7 +368,7 @@ export const useBoardStore = create<BoardStore>()(
               columnIds: nextOrder,
             });
           } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to reorder columns";
+            const message = toErrorMessage(error, "Failed to reorder columns");
             set((state) => {
               state.remoteError = message;
             });
