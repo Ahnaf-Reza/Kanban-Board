@@ -75,14 +75,15 @@ const betterAuthSecret = getRequiredEnv("BETTER_AUTH_SECRET");
 const betterAuthApiKey = getTrimmedEnv("BETTER_AUTH_API_KEY", "");
 const convexUrl = getConvexUrl();
 
-// Determine database adapter: Convex for production, memory fallback for dev
+// Determine database adapter: Convex-integrated memory for production, pure memory for dev
 const getDatabaseAdapter = () => {
 	if (convexUrl) {
 		try {
+			console.log("[auth] Using Convex-backed memory adapter");
 			return convexStorageAdapter(convexUrl);
 		} catch (error) {
-			console.error("Failed to initialize Convex storage adapter:", error.message);
-			console.warn("Falling back to in-memory storage");
+			console.error("Failed to initialize Convex adapter:", error.message);
+			console.warn("Falling back to pure memory storage");
 			return memoryAdapter({
 				user: [],
 				session: [],
@@ -93,7 +94,7 @@ const getDatabaseAdapter = () => {
 		}
 	}
 	
-	console.warn("VITE_CONVEX_URL not available - using in-memory storage");
+	console.log("[auth] VITE_CONVEX_URL not available - using memory-only storage");
 	return memoryAdapter({
 		user: [],
 		session: [],
