@@ -110,6 +110,20 @@ function sanitizeForConvex(value: any): any {
 function normalizeCreateData(model: string, data: Record<string, any>): Record<string, any> {
   const normalizedModel = model.toLowerCase();
 
+  if (
+    (normalizedModel === "session" ||
+      normalizedModel === "sessions" ||
+      normalizedModel === "account" ||
+      normalizedModel === "accounts" ||
+      normalizedModel === "verification" ||
+      normalizedModel === "verifications" ||
+      normalizedModel === "jwks" ||
+      normalizedModel === "jwk") &&
+    (typeof data.id !== "string" || data.id.trim().length === 0)
+  ) {
+    data.id = crypto.randomUUID();
+  }
+
   if (normalizedModel === "user" || normalizedModel === "users") {
     const email = typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
 
@@ -141,9 +155,16 @@ export const create = mutation({
     if (typeof data.createdAt === "undefined") data.createdAt = now;
     if (typeof data.updatedAt === "undefined") data.updatedAt = now;
 
-    const insertedId = await ctx.db.insert(table, data);
-    const row = await ctx.db.get(insertedId as any);
-    return row;
+    try {
+      const insertedId = await ctx.db.insert(table, data);
+      const row = await ctx.db.get(insertedId as any);
+      return row;
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `authDb.create failed for model ${args.model}: ${message}; keys=${Object.keys(data).join(",")}`
+      );
+    }
   },
 });
 
@@ -223,8 +244,15 @@ export const update = mutation({
     if (!found) return null;
 
     const patch = sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() });
-    await ctx.db.patch(found._id, patch);
-    return await ctx.db.get(found._id);
+    try {
+      await ctx.db.patch(found._id, patch);
+      return await ctx.db.get(found._id);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `authDb.update failed for model ${args.model}: ${message}; keys=${Object.keys(patch).join(",")}`
+      );
+    }
   },
 });
 
@@ -240,8 +268,15 @@ export const updateMany = mutation({
     const matches = rows.filter((row: any) => matchesWhere(row, args.where as any));
     const patch = sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() });
 
-    for (const row of matches) {
-      await ctx.db.patch(row._id, patch);
+    try {
+      for (const row of matches) {
+        await ctx.db.patch(row._id, patch);
+      }
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `authDb.updateMany failed for model ${args.model}: ${message}; keys=${Object.keys(patch).join(",")}`
+      );
     }
 
     return matches.length;
