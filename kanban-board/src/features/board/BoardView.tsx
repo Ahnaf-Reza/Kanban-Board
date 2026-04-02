@@ -184,7 +184,6 @@ export function BoardView() {
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
           placeholder="Search tasks..."
-          hint="Filter by content in real time"
           aria-label="Search tasks"
         />
       </div>

@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LogOut, Moon, Plus, RotateCcw, RotateCw, Sun, UserCircle2 } from "lucide-react";
 import "./App.css";
 import { BoardView } from "./features/board/BoardView";
 import { AuthPanel } from "./features/auth/AuthPanel";
 import { Button } from "./components/ui/Button";
 import { Input } from "./components/ui/Input";
 import { Modal } from "./components/ui/Modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./components/ui/dropdown-menu";
 import { useDarkMode } from "./hooks/useDarkMode";
 import { useBetterAuthSession } from "./hooks/useBetterAuthSession";
 import { getConfiguredOauthProviders } from "./lib/authClient";
@@ -180,8 +189,8 @@ function App() {
     return (
       <main className={backgroundClassName}>
         <div className="mx-auto flex w-full max-w-7xl justify-end px-4 pt-6 md:px-8">
-          <Button variant="secondary" onClick={toggle}>
-            {isDark ? "Light" : "Dark"} Mode
+          <Button variant="secondary" size="icon" onClick={toggle} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </Button>
         </div>
         <AuthPanel
@@ -198,56 +207,77 @@ function App() {
 
   return (
     <main className={backgroundClassName}>
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-8 pt-6 md:px-8">
-        <header className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+      <section className="mx-auto w-full max-w-7xl px-4 pb-8 pt-6 md:px-8">
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <aside className="flex w-full flex-col gap-5 rounded-2xl border border-white/40 bg-white/75 p-4 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70 lg:w-72 lg:shrink-0">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-cyan-300">Production Board</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-tight">Kanban Workspace</h1>
-              <p className="mt-2 max-w-2xl text-sm text-slate-700 dark:text-slate-300">
-                Drag tasks across columns, edit inline with debounced autosave, and recover quickly with undo/redo.
-              </p>
-              {sessionUser?.email ? (
-                <p className="mt-2 text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300">
-                  Signed in as {sessionUser.email}
-                </p>
-              ) : null}
+              <h1 className="mt-1 text-2xl font-bold tracking-tight">Kanban Workspace</h1>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" onClick={toggle}>
-                {isDark ? "Light" : "Dark"} Mode
-              </Button>
-              <Button variant="ghost" onClick={undo} disabled={historyIndex <= 0}>
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+              <Button variant="secondary" onClick={undo} disabled={historyIndex <= 0} className="justify-start gap-2">
+                <RotateCcw size={16} />
                 Undo
               </Button>
-              <Button variant="ghost" onClick={redo} disabled={historyIndex >= historyLength - 1}>
+              <Button variant="secondary" onClick={redo} disabled={historyIndex >= historyLength - 1} className="justify-start gap-2">
+                <RotateCw size={16} />
                 Redo
               </Button>
-              <Button onClick={() => setIsCreateColumnOpen(true)}>Add Column</Button>
-              <Button variant="danger" onClick={() => void handleSignOut()}>
-                Sign Out
+              <Button onClick={() => setIsCreateColumnOpen(true)} className="col-span-2 justify-start gap-2 lg:col-span-1">
+                <Plus size={16} />
+                Add Column
               </Button>
             </div>
-          </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-            <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
-              <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Tasks</p>
-              <p className="text-xl font-semibold">{taskCount}</p>
-            </div>
-            <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
-              <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Columns</p>
-              <p className="text-xl font-semibold">{columnCount}</p>
-            </div>
-            <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
-              <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">History</p>
-              <p className="text-xl font-semibold">{historyIndex + 1}</p>
-            </div>
-          </div>
-        </header>
+            <div className="mt-auto flex items-center justify-between border-t border-slate-200/80 pt-4 dark:border-slate-700/70">
+              <Button variant="ghost" size="icon" onClick={toggle} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </Button>
 
-        <BoardView />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Open account menu">
+                    <UserCircle2 size={20} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Account</DropdownMenuLabel>
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{sessionUser?.name || "User"}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{sessionUser?.email || "No email"}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => void handleSignOut()} className="gap-2 text-red-600 dark:text-red-300">
+                    <LogOut size={16} />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </aside>
+
+          <div className="min-w-0 flex-1">
+            <header className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Tasks</p>
+                  <p className="text-xl font-semibold">{taskCount}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Columns</p>
+                  <p className="text-xl font-semibold">{columnCount}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">History</p>
+                  <p className="text-xl font-semibold">{historyIndex + 1}</p>
+                </div>
+              </div>
+            </header>
+
+            <BoardView />
+          </div>
+        </div>
       </section>
 
       <Modal
