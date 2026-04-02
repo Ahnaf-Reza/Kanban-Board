@@ -19,9 +19,11 @@ export default async function authHandler(req, res) {
 		}
 
 		const message = error instanceof Error ? error.message : "Unknown auth init error";
+		console.error("[AUTH_INIT_ERROR]", error);
 		writeJson(res, 500, {
 			error: "AUTH_INIT_FAILED",
 			message,
+			stack: error instanceof Error ? error.stack : undefined,
 		});
 		return;
 	}

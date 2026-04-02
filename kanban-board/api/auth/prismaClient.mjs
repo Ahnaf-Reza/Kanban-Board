@@ -6,7 +6,7 @@ function createPrismaClient() {
   const databaseUrl = process.env.DATABASE_URL?.trim();
   if (!databaseUrl) {
     throw new Error(
-      "DATABASE_URL environment variable is not set. Set it in your deployment platform (Vercel, etc.) and redeploy."
+      "[SETUP_REQUIRED] DATABASE_URL is not set. Go to your Vercel project Settings > Environment Variables and add DATABASE_URL with your PostgreSQL connection string, then redeploy."
     );
   }
 
@@ -26,3 +26,4 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export { prisma };
+
