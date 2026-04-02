@@ -115,7 +115,7 @@ This project now expects Better Auth as the identity provider and Convex as the 
 3. JWT plugin enabled in Better Auth so authenticated sessions can call `GET /api/auth/token`.
 4. JWT `aud` claim must be `convex` (matches `applicationID` in `convex/auth.config.ts`).
 5. JWT issuer must match your Better Auth base URL used by Convex domain discovery.
-6. The current local auth server uses the in-memory adapter, so auth data is temporary until you switch to a persistent adapter.
+6. Better Auth storage must use a persistent Postgres database (Prisma adapter) so auth state survives restarts.
 
 ### Convex auth config
 
