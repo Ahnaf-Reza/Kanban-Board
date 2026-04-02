@@ -4,8 +4,9 @@ import { immer } from "zustand/middleware/immer";
 import { current } from "immer";
 import type { BoardState, ColumnId, Task, TaskId } from "../types/board";
 import { toBoardState } from "../utils/boardGuards";
-import { getConvexClient } from "../lib/convexClient";
+import { getConvexClient, setConvexAuthToken } from "../lib/convexClient";
 import { convexRefs } from "../lib/convexRefs";
+import { fetchConvexJwtToken } from "../lib/authClient";
 
 interface BoardStore extends BoardState {
   boardId: string | null;
@@ -117,6 +118,46 @@ function toErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function isUnauthorizedError(error: unknown): boolean {
+  const message = toErrorMessage(error, "").toLowerCase();
+  return (
+    message.includes("unauthorized") ||
+    message.includes("not authenticated") ||
+    message.includes("invalid auth")
+  );
+}
+
+async function refreshConvexTokenIfPossible(): Promise<boolean> {
+  try {
+    const token = await fetchConvexJwtToken();
+    if (!token) {
+      return false;
+    }
+
+    setConvexAuthToken(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function runWithAuthRetry<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isUnauthorizedError(error)) {
+      throw error;
+    }
+
+    const refreshed = await refreshConvexTokenIfPossible();
+    if (!refreshed) {
+      throw error;
+    }
+
+    return operation();
+  }
+}
+
 export const useBoardStore = create<BoardStore>()(
   persist(
     immer((set, get) => {
@@ -142,10 +183,15 @@ export const useBoardStore = create<BoardStore>()(
         }
 
         try {
-          const boardId = (await client.mutation(convexRefs.bootstrapDefaultBoard, {})) as string;
-          const remote = (await client.query(convexRefs.getBoard, {
-            slug: "default",
-          })) as RemoteBoardData | null;
+          const boardId = (await runWithAuthRetry(
+            async () => (await client.mutation(convexRefs.bootstrapDefaultBoard, {})) as string,
+          )) as string;
+          const remote = (await runWithAuthRetry(
+            async () =>
+              (await client.query(convexRefs.getBoard, {
+                slug: "default",
+              })) as RemoteBoardData | null,
+          )) as RemoteBoardData | null;
 
           if (!remote) {
             throw new Error("Board not found after bootstrap");
@@ -201,10 +247,12 @@ export const useBoardStore = create<BoardStore>()(
 
         void (async () => {
           try {
-            await client.mutation(convexRefs.addTask, {
-              columnId,
-              content,
-            });
+            await runWithAuthRetry(async () =>
+              client.mutation(convexRefs.addTask, {
+                columnId,
+                content,
+              }),
+            );
             await syncFromRemote(false);
           } catch (error) {
             const message = toErrorMessage(error, "Failed to add task");
@@ -239,11 +287,13 @@ export const useBoardStore = create<BoardStore>()(
 
         void (async () => {
           try {
-            await client.mutation(convexRefs.moveTask, {
-              taskId,
-              toColumnId: to,
-              toIndex,
-            });
+            await runWithAuthRetry(async () =>
+              client.mutation(convexRefs.moveTask, {
+                taskId,
+                toColumnId: to,
+                toIndex,
+              }),
+            );
           } catch (error) {
             const message = toErrorMessage(error, "Failed to move task");
             set((state) => {
@@ -282,9 +332,11 @@ export const useBoardStore = create<BoardStore>()(
 
         void (async () => {
           try {
-            await client.mutation(convexRefs.deleteTask, {
-              taskId,
-            });
+            await runWithAuthRetry(async () =>
+              client.mutation(convexRefs.deleteTask, {
+                taskId,
+              }),
+            );
           } catch (error) {
             const message = toErrorMessage(error, "Failed to delete task");
             set((state) => {
@@ -302,10 +354,12 @@ export const useBoardStore = create<BoardStore>()(
 
         void (async () => {
           try {
-            await client.mutation(convexRefs.addColumn, {
-              boardId,
-              title,
-            });
+            await runWithAuthRetry(async () =>
+              client.mutation(convexRefs.addColumn, {
+                boardId,
+                title,
+              }),
+            );
             await syncFromRemote(false);
           } catch (error) {
             const message = toErrorMessage(error, "Failed to add column");
@@ -323,9 +377,11 @@ export const useBoardStore = create<BoardStore>()(
 
         void (async () => {
           try {
-            await client.mutation(convexRefs.deleteColumn, {
-              columnId,
-            });
+            await runWithAuthRetry(async () =>
+              client.mutation(convexRefs.deleteColumn, {
+                columnId,
+              }),
+            );
             await syncFromRemote(false);
           } catch (error) {
             const message = toErrorMessage(error, "Failed to delete column");
@@ -363,10 +419,12 @@ export const useBoardStore = create<BoardStore>()(
 
         void (async () => {
           try {
-            await client.mutation(convexRefs.reorderColumns, {
-              boardId,
-              columnIds: nextOrder,
-            });
+            await runWithAuthRetry(async () =>
+              client.mutation(convexRefs.reorderColumns, {
+                boardId,
+                columnIds: nextOrder,
+              }),
+            );
           } catch (error) {
             const message = toErrorMessage(error, "Failed to reorder columns");
             set((state) => {
