@@ -1,7 +1,6 @@
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { dash } from "@better-auth/infra";
-import { convexStorageAdapter } from "./convexStorageAdapter.mjs";
 import { memoryAdapter } from "@better-auth/memory-adapter";
 
 function getCsvEnv(name, fallback) {
@@ -73,36 +72,19 @@ const jwtIssuer = getTrimmedEnv("BETTER_AUTH_JWT_ISSUER", baseURL);
 const trustedOrigins = resolveTrustedOrigins(baseURL);
 const betterAuthSecret = getRequiredEnv("BETTER_AUTH_SECRET");
 const betterAuthApiKey = getTrimmedEnv("BETTER_AUTH_API_KEY", "");
-const convexUrl = getConvexUrl();
+getConvexUrl();
 
-// Determine database adapter: Convex-integrated memory for production, pure memory for dev
-const getDatabaseAdapter = () => {
-	if (convexUrl) {
-		try {
-			console.log("[auth] Using Convex-backed memory adapter");
-			return convexStorageAdapter(convexUrl);
-		} catch (error) {
-			console.error("Failed to initialize Convex adapter:", error.message);
-			console.warn("Falling back to pure memory storage");
-			return memoryAdapter({
-				user: [],
-				session: [],
-				account: [],
-				verification: [],
-				jwks: [],
-			});
-		}
-	}
-	
-	console.log("[auth] VITE_CONVEX_URL not available - using memory-only storage");
-	return memoryAdapter({
-		user: [],
-		session: [],
-		account: [],
-		verification: [],
-		jwks: [],
-	});
+const memoryDb = globalThis.__kanbanBetterAuthMemoryDb ?? {
+	user: [],
+	session: [],
+	account: [],
+	verification: [],
+	jwks: [],
 };
+
+globalThis.__kanbanBetterAuthMemoryDb = memoryDb;
+
+const getDatabaseAdapter = () => memoryAdapter(memoryDb);
 
 const plugins = [
 	jwt({
