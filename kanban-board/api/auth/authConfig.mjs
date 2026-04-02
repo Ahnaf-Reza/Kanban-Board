@@ -99,9 +99,7 @@ const plugins = [
 	}),
 ];
 
-const hasGoogleOAuth =
-	process.env.BETTER_AUTH_ENABLE_GOOGLE_OAUTH === "true" &&
-	Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
 export const auth = betterAuth({
 	baseURL,
