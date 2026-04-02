@@ -136,6 +136,32 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
     data.name = hasName ? data.name.trim() : email.split("@")[0] || "User";
   }
 
+  if (normalizedModel === "verification" || normalizedModel === "verifications") {
+    if (typeof data.identifier !== "string" || data.identifier.trim().length === 0) {
+      data.identifier = "oauth_state";
+    } else {
+      data.identifier = data.identifier.trim();
+    }
+
+    if (typeof data.value !== "string") {
+      data.value = JSON.stringify(data.value ?? "");
+    }
+
+    if (typeof data.expiresAt === "string") {
+      const parsed = Number(data.expiresAt);
+      if (!Number.isNaN(parsed)) {
+        data.expiresAt = parsed;
+      } else {
+        const parsedDate = Date.parse(data.expiresAt);
+        data.expiresAt = Number.isNaN(parsedDate) ? Date.now() + 10 * 60 * 1000 : parsedDate;
+      }
+    }
+
+    if (typeof data.expiresAt !== "number") {
+      data.expiresAt = Date.now() + 10 * 60 * 1000;
+    }
+  }
+
   return data;
 }
 
