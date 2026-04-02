@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as authDb from "../authDb.js";
+import type * as authStorage from "../authStorage.js";
 import type * as board from "../board.js";
 import type * as users from "../users.js";
 
@@ -22,6 +23,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authDb: typeof authDb;
+  authStorage: typeof authStorage;
   board: typeof board;
   users: typeof users;
 }>;

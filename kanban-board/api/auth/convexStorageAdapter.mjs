@@ -51,7 +51,7 @@ export function convexStorageAdapter(convexUrl) {
         for (const record of records) {
           if (!record) continue;
           try {
-            await callConvex("action", "authDb:createRecord", {
+            await callConvex("mutation", "authStorage:createRecord", {
               table,
               data: record,
             });
@@ -73,7 +73,7 @@ export function convexStorageAdapter(convexUrl) {
 
       for (const table of Object.keys(data)) {
         try {
-          const records = await callConvex("query", "authDb:getAllRecords", {
+          const records = await callConvex("query", "authStorage:getAllRecords", {
             table,
           });
           result[table] = Array.isArray(records) ? records : [];
@@ -98,7 +98,7 @@ export function convexStorageAdapter(convexUrl) {
         for (const record of records) {
           if (!record) continue;
           try {
-            await callConvex("action", "authDb:updateRecord", {
+            await callConvex("mutation", "authStorage:updateRecord", {
               table,
               data: record,
             });
@@ -124,7 +124,7 @@ export function convexStorageAdapter(convexUrl) {
         for (const record of records) {
           if (!record || !record.id) continue;
           try {
-            await callConvex("action", "authDb:deleteRecord", {
+            await callConvex("mutation", "authStorage:deleteRecord", {
               table,
               id: record.id,
             });
