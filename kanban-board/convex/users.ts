@@ -95,7 +95,6 @@ export const upsertCurrentUser = mutation({
         image: nextAvatarUrl,
         name: nextName ?? existing.name ?? "",
         updatedAt: now,
-        lastSeenAt: now,
       });
       return existing._id;
     }
@@ -111,7 +110,6 @@ export const upsertCurrentUser = mutation({
       name: nextName ?? "",
       createdAt: now,
       updatedAt: now,
-      lastSeenAt: now,
     });
   },
 });
