@@ -1,18 +1,7 @@
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
-import { memoryAdapter } from "@better-auth/memory-adapter";
 import { dash } from "@better-auth/infra";
-
-const memoryDb =
-	globalThis.__kanbanBetterAuthMemoryDb ?? {
-		user: [],
-		session: [],
-		account: [],
-		verification: [],
-		jwks: [],
-	};
-
-globalThis.__kanbanBetterAuthMemoryDb = memoryDb;
+import { convexStorageAdapter } from "./convexStorageAdapter.mjs";
 
 function getCsvEnv(name, fallback) {
 	const raw = process.env[name] ?? fallback;
@@ -38,6 +27,10 @@ function getRequiredEnv(name) {
 	}
 
 	throw new Error(`${name} is required in the runtime environment.`);
+}
+
+function getConvexUrl() {
+	return getRequiredEnv("VITE_CONVEX_URL");
 }
 
 function resolveDefaultBaseUrl() {
@@ -72,6 +65,7 @@ const jwtIssuer = getTrimmedEnv("BETTER_AUTH_JWT_ISSUER", baseURL);
 const trustedOrigins = resolveTrustedOrigins(baseURL);
 const betterAuthSecret = getRequiredEnv("BETTER_AUTH_SECRET");
 const betterAuthApiKey = getTrimmedEnv("BETTER_AUTH_API_KEY", "");
+const convexUrl = getConvexUrl();
 
 const plugins = [
 	jwt({
@@ -91,7 +85,7 @@ const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGL
 export const auth = betterAuth({
 	baseURL,
 	secret: betterAuthSecret,
-	database: memoryAdapter(memoryDb),
+	database: convexStorageAdapter(convexUrl),
 	trustedOrigins,
 	account: {
 		accountLinking: {
