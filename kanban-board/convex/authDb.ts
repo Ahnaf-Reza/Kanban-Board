@@ -107,6 +107,24 @@ function sanitizeForConvex(value: any): any {
   return value;
 }
 
+function normalizeCreateData(model: string, data: Record<string, any>): Record<string, any> {
+  const normalizedModel = model.toLowerCase();
+
+  if (normalizedModel === "user" || normalizedModel === "users") {
+    const email = typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
+
+    if (!email) {
+      throw new Error("Auth user email is required for users model.");
+    }
+
+    const hasName = typeof data.name === "string" && data.name.trim().length > 0;
+    data.email = email;
+    data.name = hasName ? data.name.trim() : email.split("@")[0] || "User";
+  }
+
+  return data;
+}
+
 export const create = mutation({
   args: {
     model: v.string(),
@@ -114,7 +132,10 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const table = modelToTable(args.model) as any;
-    const data = sanitizeForConvex({ ...(args.data as Record<string, any>) });
+    const data = normalizeCreateData(
+      args.model,
+      sanitizeForConvex({ ...(args.data as Record<string, any>) })
+    );
 
     const now = Date.now();
     if (typeof data.createdAt === "undefined") data.createdAt = now;
