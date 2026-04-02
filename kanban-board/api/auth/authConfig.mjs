@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { dash } from "@better-auth/infra";
-import { createSqliteAdapter } from "../../better-auth-server/src/sqliteAdapter.mjs";
+import { createSqliteAdapter } from "./sqliteAdapter.mjs";
 
 function getCsvEnv(name, fallback) {
 	const raw = process.env[name] ?? fallback;
