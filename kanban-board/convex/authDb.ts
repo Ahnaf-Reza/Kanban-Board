@@ -196,6 +196,39 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
     }
   }
 
+  if (normalizedModel === "session" || normalizedModel === "sessions") {
+    if (typeof data.id !== "string" || data.id.trim().length === 0) {
+      data.id = crypto.randomUUID();
+    } else {
+      data.id = data.id.trim();
+    }
+
+    if (typeof data.token !== "string" || data.token.trim().length === 0) {
+      throw new Error("Auth session token is required for sessions model.");
+    }
+    data.token = data.token.trim();
+
+    const userIdCandidate =
+      typeof data.userId === "string"
+        ? data.userId
+        : typeof data.user?.id === "string"
+          ? data.user.id
+          : "";
+    if (!userIdCandidate || userIdCandidate.trim().length === 0) {
+      throw new Error("Auth session userId is required for sessions model.");
+    }
+    data.userId = userIdCandidate.trim();
+
+    data.expiresAt = coerceTimestamp(data.expiresAt, Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    if (typeof data.ipAddress !== "undefined") {
+      data.ipAddress = data.ipAddress === null ? undefined : String(data.ipAddress);
+    }
+    if (typeof data.userAgent !== "undefined") {
+      data.userAgent = data.userAgent === null ? undefined : String(data.userAgent);
+    }
+  }
+
   if (normalizedModel === "verification" || normalizedModel === "verifications") {
     if (typeof data.id !== "string" || data.id.trim().length === 0) {
       data.id = crypto.randomUUID();
