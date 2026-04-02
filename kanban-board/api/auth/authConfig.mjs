@@ -1,7 +1,8 @@
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { dash } from "@better-auth/infra";
-import { createSqliteAdapter } from "./sqliteAdapter.mjs";
+import { prismaAdapter } from "@better-auth/prisma-adapter";
+import { prisma } from "./prismaClient.mjs";
 
 function getCsvEnv(name, fallback) {
 	const raw = process.env[name] ?? fallback;
@@ -33,7 +34,7 @@ function getConvexUrl() {
 	const url = getTrimmedEnv("VITE_CONVEX_URL", "");
 	if (!url) {
 		console.error(
-			"VITE_CONVEX_URL is not set. Auth will use SQLite for persistence."
+			"VITE_CONVEX_URL is not set. Auth will still use Postgres for persistence, but board sync will fail."
 		);
 		return null;
 	}
@@ -74,8 +75,6 @@ const betterAuthSecret = getRequiredEnv("BETTER_AUTH_SECRET");
 const betterAuthApiKey = getTrimmedEnv("BETTER_AUTH_API_KEY", "");
 getConvexUrl();
 
-const getDatabaseAdapter = () => createSqliteAdapter();
-
 const plugins = [
 	jwt({
 		jwt: {
@@ -94,7 +93,9 @@ const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGL
 export const auth = betterAuth({
 	baseURL,
 	secret: betterAuthSecret,
-	database: getDatabaseAdapter(),
+	database: prismaAdapter(prisma, {
+		provider: "postgresql",
+	}),
 	trustedOrigins,
 	account: {
 		accountLinking: {
