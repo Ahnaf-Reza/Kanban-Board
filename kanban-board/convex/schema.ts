@@ -3,18 +3,19 @@ import { v } from "convex/values";
 
 export default defineSchema({
   users: defineTable({
-    tokenIdentifier: v.string(),
-    subject: v.string(),
-    issuer: v.string(),
-    email: v.optional(v.string()),
-    name: v.optional(v.string()),
-    avatarUrl: v.optional(v.string()),
+    id: v.string(),
+    name: v.string(),
+    email: v.string(),
+    emailVerified: v.boolean(),
+    image: v.optional(v.string()),
+    tokenIdentifier: v.optional(v.string()),
+    subject: v.optional(v.string()),
+    issuer: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-    lastSeenAt: v.number(),
   })
-    .index("by_token_identifier", ["tokenIdentifier"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_token_identifier", ["tokenIdentifier"]),
 
   boards: defineTable({
     slug: v.string(),
