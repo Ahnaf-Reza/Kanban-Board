@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authClient, fetchConvexJwtToken } from "../lib/authClient";
 import { clearConvexAuthToken, hasConvexAuthToken, setConvexAuthToken } from "../lib/convexClient";
 
-const TOKEN_REFRESH_INTERVAL_MS = 4 * 60 * 1000;
+const TOKEN_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const TOKEN_REFRESH_RETRY_DELAY_MS = 1200;
 const TOKEN_REFRESH_MAX_RETRIES = 2;
 const MAX_CONSECUTIVE_REFRESH_FAILURES = 3;

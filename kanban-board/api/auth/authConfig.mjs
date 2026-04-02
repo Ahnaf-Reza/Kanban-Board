@@ -20,6 +20,15 @@ function getTrimmedEnv(name, fallback) {
 	return fallback;
 }
 
+function getRequiredEnv(name) {
+	const raw = process.env[name];
+	if (typeof raw === "string" && raw.trim().length > 0) {
+		return raw.trim();
+	}
+
+	throw new Error(`${name} is required in the runtime environment.`);
+}
+
 function resolveDefaultBaseUrl() {
 	const vercelUrl = getTrimmedEnv("VERCEL_URL", "");
 	if (vercelUrl) {
@@ -33,9 +42,9 @@ function resolveTrustedOrigins(baseUrl) {
 	const defaultTrustedOrigins = (() => {
 		try {
 			const authOrigin = new URL(baseUrl).origin;
-			return [authOrigin, "https://**.vercel.app", "http://localhost:5173", "http://localhost:4173"];
+			return [authOrigin, "http://localhost:5173", "http://localhost:4173"];
 		} catch {
-			return ["https://**.vercel.app", "http://localhost:5173", "http://localhost:4173"];
+			return ["http://localhost:5173", "http://localhost:4173"];
 		}
 	})();
 
@@ -68,6 +77,7 @@ function getDatabaseUrl() {
 const baseURL = getTrimmedEnv("BETTER_AUTH_URL", resolveDefaultBaseUrl());
 const jwtIssuer = getTrimmedEnv("BETTER_AUTH_JWT_ISSUER", baseURL);
 const trustedOrigins = resolveTrustedOrigins(baseURL);
+const betterAuthSecret = getRequiredEnv("BETTER_AUTH_SECRET");
 
 const databaseUrl = getDatabaseUrl();
 const prisma =
@@ -96,7 +106,7 @@ const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGL
 
 export const auth = betterAuth({
 	baseURL,
-	secret: process.env.BETTER_AUTH_SECRET ?? "dev-only-secret-change-this",
+	secret: betterAuthSecret,
 	database: prismaAdapter(prisma, {
 		provider: "postgresql",
 	}),

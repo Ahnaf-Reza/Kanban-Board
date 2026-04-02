@@ -36,6 +36,10 @@ function toTokenEndpoint(baseUrl: string): string {
 
 export const authClient = createAuthClient({
   baseURL: betterAuthBaseUrl,
+  sessionOptions: {
+    refetchOnWindowFocus: false,
+    refetchInterval: 15 * 60,
+  },
   fetchOptions: {
     credentials: "include",
   },

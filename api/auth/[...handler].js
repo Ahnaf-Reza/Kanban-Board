@@ -3,6 +3,43 @@ function writeJson(res, statusCode, payload) {
 	res.end(JSON.stringify(payload));
 }
 
+function mapAuthError(error, fallbackCode) {
+	const message = error instanceof Error ? error.message : "Unknown auth error";
+
+	if (message.includes("BETTER_AUTH_SECRET is required")) {
+		return {
+			statusCode: 500,
+			code: "AUTH_SECRET_MISSING",
+			message,
+			hint: "Set BETTER_AUTH_SECRET in Vercel Production env vars and redeploy.",
+		};
+	}
+
+	if (message.includes("Failed to decrypt private key")) {
+		return {
+			statusCode: 500,
+			code: "AUTH_SECRET_MISMATCH",
+			message,
+			hint: "BETTER_AUTH_SECRET does not match stored JWKS encryption. Restore old secret or clear jwks/session/verification, then redeploy.",
+		};
+	}
+
+	if (message.includes("Postgres URL is required")) {
+		return {
+			statusCode: 500,
+			code: "AUTH_DB_MISSING",
+			message,
+			hint: "Set POSTGRES_PRISMA_URL (or POSTGRES_URL / DATABASE_URL) in runtime env vars.",
+		};
+	}
+
+	return {
+		statusCode: 500,
+		code: fallbackCode,
+		message,
+	};
+}
+
 export default async function authHandler(req, res) {
 	let baseURL;
 	let jwtIssuer;
@@ -20,10 +57,11 @@ export default async function authHandler(req, res) {
 			return;
 		}
 
-		const message = error instanceof Error ? error.message : "Unknown auth startup error";
-		writeJson(res, 500, {
-			error: "AUTH_INIT_FAILED",
-			message,
+		const mapped = mapAuthError(error, "AUTH_INIT_FAILED");
+		writeJson(res, mapped.statusCode, {
+			error: mapped.code,
+			message: mapped.message,
+			hint: mapped.hint,
 		});
 		return;
 	}
@@ -67,10 +105,11 @@ export default async function authHandler(req, res) {
 			return;
 		}
 
-		const message = error instanceof Error ? error.message : "Unknown auth runtime error";
-		writeJson(res, 500, {
-			error: "AUTH_RUNTIME_FAILED",
-			message,
+		const mapped = mapAuthError(error, "AUTH_RUNTIME_FAILED");
+		writeJson(res, mapped.statusCode, {
+			error: mapped.code,
+			message: mapped.message,
+			hint: mapped.hint,
 		});
 	}
 }
