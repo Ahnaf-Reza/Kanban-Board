@@ -78,6 +78,35 @@ function project(row: Record<string, any>, select?: string[]): Record<string, an
   return out;
 }
 
+function sanitizeForConvex(value: any): any {
+  if (value === null || typeof value === "undefined") {
+    return undefined;
+  }
+
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeForConvex(item))
+      .filter((item) => typeof item !== "undefined");
+  }
+
+  if (typeof value === "object") {
+    const out: Record<string, any> = {};
+    for (const [key, nested] of Object.entries(value)) {
+      const sanitized = sanitizeForConvex(nested);
+      if (typeof sanitized !== "undefined") {
+        out[key] = sanitized;
+      }
+    }
+    return out;
+  }
+
+  return value;
+}
+
 export const create = mutation({
   args: {
     model: v.string(),
@@ -85,11 +114,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const table = modelToTable(args.model) as any;
-    const data = { ...(args.data as Record<string, any>) };
-
-    if (!data.id) {
-      throw new Error(`Missing id in create for model ${args.model}`);
-    }
+    const data = sanitizeForConvex({ ...(args.data as Record<string, any>) });
 
     const now = Date.now();
     if (typeof data.createdAt === "undefined") data.createdAt = now;
@@ -176,7 +201,7 @@ export const update = mutation({
     const found = rows.find((row: any) => matchesWhere(row, args.where as any));
     if (!found) return null;
 
-    const patch = { ...(args.update as Record<string, any>), updatedAt: Date.now() };
+    const patch = sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() });
     await ctx.db.patch(found._id, patch);
     return await ctx.db.get(found._id);
   },
@@ -192,7 +217,7 @@ export const updateMany = mutation({
     const table = modelToTable(args.model) as any;
     const rows = await ctx.db.query(table).collect();
     const matches = rows.filter((row: any) => matchesWhere(row, args.where as any));
-    const patch = { ...(args.update as Record<string, any>), updatedAt: Date.now() };
+    const patch = sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() });
 
     for (const row of matches) {
       await ctx.db.patch(row._id, patch);
