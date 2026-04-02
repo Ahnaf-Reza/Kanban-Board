@@ -81,17 +81,12 @@ const plugins = [
 			expirationTime: "15m",
 		},
 	}),
+	dash({
+		apiKey: betterAuthApiKey,
+		apiUrl: process.env.BETTER_AUTH_API_URL,
+		kvUrl: process.env.BETTER_AUTH_KV_URL,
+	}),
 ];
-
-if (betterAuthApiKey.length > 0) {
-	plugins.push(
-		dash({
-			apiKey: betterAuthApiKey,
-			apiUrl: process.env.BETTER_AUTH_API_URL,
-			kvUrl: process.env.BETTER_AUTH_KV_URL,
-		})
-	);
-}
 
 const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
