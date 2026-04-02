@@ -7,7 +7,7 @@ This repository now contains a Convex backend scaffold in the `convex/` folder.
 - Convex schema: `convex/schema.ts`
 - Board backend functions: `convex/board.ts`
 - Auth utility for future login work: `convex/auth.ts`
-- Auth provider config placeholder: `convex/auth.config.ts`
+- Auth provider config: `convex/auth.config.ts`
 - User backend functions: `convex/users.ts`
 - Convex scripts in `package.json`
 - Convex package dependency (`convex`)
@@ -32,6 +32,7 @@ Then create `.env.local` with your real URL:
 
 ```env
 VITE_CONVEX_URL=https://YOUR_DEPLOYMENT.convex.cloud
+VITE_BETTER_AUTH_URL=http://localhost:3000/api/auth
 ```
 
 To deploy functions/schema to production later:
@@ -114,6 +115,7 @@ This project now expects Better Auth as the identity provider and Convex as the 
 3. JWT plugin enabled in Better Auth so authenticated sessions can call `GET /api/auth/token`.
 4. JWT `aud` claim must be `convex` (matches `applicationID` in `convex/auth.config.ts`).
 5. JWT issuer must match your Better Auth base URL used by Convex domain discovery.
+6. The current local auth server uses the in-memory adapter, so auth data is temporary until you switch to a persistent adapter.
 
 ### Convex auth config
 

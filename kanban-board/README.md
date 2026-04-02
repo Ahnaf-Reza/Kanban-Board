@@ -117,7 +117,7 @@ Authentication is now powered by Better Auth.
 - OAuth provider buttons are rendered from `VITE_BETTER_AUTH_OAUTH_PROVIDERS`.
 - Convex requests are authenticated with JWT access tokens from Better Auth `GET /token`.
 - Board data is scoped per authenticated user in Convex.
-- Better Auth now uses Prisma + Postgres persistence, so `DATABASE_URL` is required in the auth server environment.
+- The local Better Auth server currently uses an in-memory adapter, so auth state resets when that server restarts.
 
 Minimum env vars for the full auth stack:
 
@@ -125,7 +125,7 @@ Minimum env vars for the full auth stack:
 VITE_CONVEX_URL=https://YOUR_DEPLOYMENT.convex.cloud
 VITE_BETTER_AUTH_URL=http://localhost:3000/api/auth
 VITE_BETTER_AUTH_OAUTH_PROVIDERS=google,github
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public
+BETTER_AUTH_SECRET=replace-with-a-strong-secret
 ```
 
 Important: `convex/auth.config.ts` must point to your Better Auth issuer and audience (`applicationID`) must match the JWT `aud` claim (default in this project: `convex`).

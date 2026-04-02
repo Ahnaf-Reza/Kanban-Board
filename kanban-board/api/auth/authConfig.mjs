@@ -1,7 +1,6 @@
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-import { PrismaClient } from "@prisma/client";
+import { memoryAdapter } from "@better-auth/memory-adapter";
 
 function getCsvEnv(name, fallback) {
 	const raw = process.env[name] ?? fallback;
@@ -56,41 +55,10 @@ function resolveTrustedOrigins(baseUrl) {
 	return Array.from(new Set([...defaultTrustedOrigins, ...configured]));
 }
 
-function getDatabaseUrl() {
-	const candidates = [
-		process.env.POSTGRES_PRISMA_URL,
-		process.env.POSTGRES_URL,
-		process.env.DATABASE_URL,
-	];
-
-	for (const value of candidates) {
-		if (typeof value === "string" && value.trim().length > 0) {
-			return value.trim();
-		}
-	}
-
-	throw new Error(
-		"A Postgres URL is required. Set DATABASE_URL (or POSTGRES_PRISMA_URL / POSTGRES_URL) in the runtime environment."
-	);
-}
-
 const baseURL = getTrimmedEnv("BETTER_AUTH_URL", resolveDefaultBaseUrl());
 const jwtIssuer = getTrimmedEnv("BETTER_AUTH_JWT_ISSUER", baseURL);
 const trustedOrigins = resolveTrustedOrigins(baseURL);
 const betterAuthSecret = getRequiredEnv("BETTER_AUTH_SECRET");
-
-const databaseUrl = getDatabaseUrl();
-const prisma =
-	globalThis.__kanbanPrismaClient ??
-	new PrismaClient({
-		datasources: {
-			db: {
-				url: databaseUrl,
-			},
-		},
-	});
-
-globalThis.__kanbanPrismaClient = prisma;
 
 const plugins = [
 	jwt({
@@ -107,9 +75,7 @@ const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGL
 export const auth = betterAuth({
 	baseURL,
 	secret: betterAuthSecret,
-	database: prismaAdapter(prisma, {
-		provider: "postgresql",
-	}),
+	database: memoryAdapter(),
 	trustedOrigins,
 	account: {
 		accountLinking: {
