@@ -1,535 +1,236 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
 
-// User operations
-export const createUser = mutation({
-  args: {
-    tokenIdentifier: v.string(),
-    subject: v.string(),
-    issuer: v.string(),
-    email: v.optional(v.string()),
-    name: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("users", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      lastSeenAt: Date.now(),
-    });
-  },
+const whereOp = v.union(
+  v.literal("eq"),
+  v.literal("ne"),
+  v.literal("lt"),
+  v.literal("lte"),
+  v.literal("gt"),
+  v.literal("gte"),
+  v.literal("in"),
+  v.literal("not_in"),
+  v.literal("contains"),
+  v.literal("starts_with"),
+  v.literal("ends_with")
+);
+
+const whereItem = v.object({
+  field: v.string(),
+  value: v.any(),
+  operator: v.optional(whereOp),
+  connector: v.optional(v.union(v.literal("AND"), v.literal("OR"))),
 });
 
-export const getUserByToken = query({
-  args: { tokenIdentifier: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("users")
-      .withIndex("by_token_identifier", (q) =>
-        q.eq("tokenIdentifier", args.tokenIdentifier)
-      )
-      .first();
-  },
-});
+function modelToTable(model: string): string {
+  const normalized = model.toLowerCase();
+  if (normalized === "user" || normalized === "users") return "users";
+  if (normalized === "session" || normalized === "sessions") return "sessions";
+  if (normalized === "account" || normalized === "accounts") return "accounts";
+  if (normalized === "verification" || normalized === "verifications") return "verification";
+  if (normalized === "jwks" || normalized === "jwk") return "jwks";
+  throw new Error(`Unsupported auth model: ${model}`);
+}
 
-export const getUserById = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.userId);
-  },
-});
+function cmp(fieldValue: any, operator: string, value: any): boolean {
+  if (operator === "eq") return fieldValue === value;
+  if (operator === "ne") return fieldValue !== value;
+  if (operator === "lt") return fieldValue < value;
+  if (operator === "lte") return fieldValue <= value;
+  if (operator === "gt") return fieldValue > value;
+  if (operator === "gte") return fieldValue >= value;
+  if (operator === "in") return Array.isArray(value) && value.includes(fieldValue);
+  if (operator === "not_in") return Array.isArray(value) && !value.includes(fieldValue);
+  if (operator === "contains") return typeof fieldValue === "string" && typeof value === "string" && fieldValue.includes(value);
+  if (operator === "starts_with") return typeof fieldValue === "string" && typeof value === "string" && fieldValue.startsWith(value);
+  if (operator === "ends_with") return typeof fieldValue === "string" && typeof value === "string" && fieldValue.endsWith(value);
+  return fieldValue === value;
+}
 
-export const updateUser = mutation({
-  args: {
-    userId: v.id("users"),
-    email: v.optional(v.string()),
-    name: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const { userId, ...updates } = args;
-    await ctx.db.patch(userId, {
-      ...updates,
-      updatedAt: Date.now(),
-    });
-    return await ctx.db.get(userId);
-  },
-});
+function matchesWhere(row: Record<string, any>, where?: Array<Record<string, any>>): boolean {
+  if (!where || where.length === 0) return true;
 
-// Session operations
-export const createSession = mutation({
-  args: {
-    token: v.string(),
-    userId: v.id("users"),
-    expiresAt: v.number(),
-    ipAddress: v.optional(v.string()),
-    userAgent: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("sessions", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
+  let acc = true;
+  for (let i = 0; i < where.length; i += 1) {
+    const clause = where[i];
+    const operator = clause.operator ?? "eq";
+    const connector = clause.connector ?? "AND";
+    const current = cmp(row[clause.field], operator, clause.value);
 
-export const getSessionByToken = query({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .first();
-  },
-});
-
-export const deleteSession = mutation({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    const session = await ctx.db
-      .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .first();
-    if (session) {
-      await ctx.db.delete(session._id);
+    if (i === 0) {
+      acc = current;
+    } else if (connector === "OR") {
+      acc = acc || current;
+    } else {
+      acc = acc && current;
     }
-  },
-});
+  }
 
-// Account operations
-export const createAccount = mutation({
+  return acc;
+}
+
+function project(row: Record<string, any>, select?: string[]): Record<string, any> {
+  if (!select || select.length === 0) return row;
+  const out: Record<string, any> = {};
+  for (const key of select) {
+    out[key] = row[key];
+  }
+  return out;
+}
+
+export const create = mutation({
   args: {
-    userId: v.id("users"),
-    accountId: v.string(),
-    providerId: v.string(),
-    accessToken: v.optional(v.string()),
-    refreshToken: v.optional(v.string()),
-    idToken: v.optional(v.string()),
-    accessTokenExpiresAt: v.optional(v.number()),
-    refreshTokenExpiresAt: v.optional(v.number()),
-    scope: v.optional(v.string()),
-    password: v.optional(v.string()),
+    model: v.string(),
+    data: v.any(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("accounts", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
+    const table = modelToTable(args.model) as any;
+    const data = { ...(args.data as Record<string, any>) };
 
-export const getAccountsByUserId = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("accounts")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .collect();
-  },
-});
-
-// Verification operations
-export const createVerification = mutation({
-  args: {
-    identifier: v.string(),
-    value: v.string(),
-    expiresAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("verification", {
-      ...args,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-export const getVerificationByIdentifier = query({
-  args: { identifier: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("verification")
-      .withIndex("by_identifier", (q) => q.eq("identifier", args.identifier))
-      .first();
-  },
-});
-
-export const deleteVerification = mutation({
-  args: { identifier: v.string() },
-  handler: async (ctx, args) => {
-    const verification = await ctx.db
-      .query("verification")
-      .withIndex("by_identifier", (q) => q.eq("identifier", args.identifier))
-      .first();
-    if (verification) {
-      await ctx.db.delete(verification._id);
+    if (!data.id) {
+      throw new Error(`Missing id in create for model ${args.model}`);
     }
+
+    const now = Date.now();
+    if (typeof data.createdAt === "undefined") data.createdAt = now;
+    if (typeof data.updatedAt === "undefined") data.updatedAt = now;
+
+    const insertedId = await ctx.db.insert(table, data);
+    const row = await ctx.db.get(insertedId as any);
+    return row;
   },
 });
 
-// JWKS operations
-export const createJwks = mutation({
+export const findMany = query({
   args: {
-    publicKey: v.string(),
-    privateKey: v.string(),
-    expiresAt: v.optional(v.number()),
+    model: v.string(),
+    where: v.optional(v.array(whereItem)),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+    sortBy: v.optional(v.object({ field: v.string(), direction: v.union(v.literal("asc"), v.literal("desc")) })),
+    select: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("jwks", {
-      ...args,
-      createdAt: Date.now(),
-    });
-  },
-});
+    const table = modelToTable(args.model) as any;
+    const rows = await ctx.db.query(table).collect();
 
-export const getLatestJwks = query({
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("jwks")
-      .order("desc")
-      .first();
-  },
-});
+    const filtered = rows.filter((row: any) => matchesWhere(row, args.where as any));
 
-// ============================================================
-// Better Auth adapter functions
-// ============================================================
-
-export const createUser = mutation({
-  args: {
-    id: v.string(),
-    name: v.string(),
-    email: v.string(),
-    emailVerified: v.boolean(),
-    image: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("users", {
-      _id: args.id,
-      id: args.id,
-      name: args.name,
-      email: args.email,
-      emailVerified: args.emailVerified,
-      image: args.image,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-export const getUserById = query({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("id"), args.userId))
-      .first();
-  },
-});
-
-export const getUserByEmail = query({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("email"), args.email))
-      .first();
-  },
-});
-
-export const updateUser = mutation({
-  args: {
-    userId: v.string(),
-    name: v.optional(v.string()),
-    email: v.optional(v.string()),
-    emailVerified: v.optional(v.boolean()),
-    image: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("id"), args.userId))
-      .first();
-
-    if (!user) return null;
-
-    const updates = {};
-    if (args.name !== undefined) updates.name = args.name;
-    if (args.email !== undefined) updates.email = args.email;
-    if (args.emailVerified !== undefined) updates.emailVerified = args.emailVerified;
-    if (args.image !== undefined) updates.image = args.image;
-    updates.updatedAt = Date.now();
-
-    await ctx.db.patch(user._id, updates);
-    return user._id;
-  },
-});
-
-export const deleteUser = mutation({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("id"), args.userId))
-      .first();
-
-    if (user) {
-      await ctx.db.delete(user._id);
+    if (args.sortBy) {
+      const { field, direction } = args.sortBy;
+      filtered.sort((a: any, b: any) => {
+        const av = a[field];
+        const bv = b[field];
+        if (av === bv) return 0;
+        if (av === undefined) return 1;
+        if (bv === undefined) return -1;
+        const ord = av < bv ? -1 : 1;
+        return direction === "desc" ? -ord : ord;
+      });
     }
+
+    const offset = args.offset ?? 0;
+    const limit = args.limit ?? filtered.length;
+    const paged = filtered.slice(offset, offset + limit);
+
+    return paged.map((row: any) => project(row, args.select));
   },
 });
 
-export const getSession = query({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("sessions")
-      .filter((q) => q.eq(q.field("token"), args.token))
-      .first();
-  },
-});
-
-export const createSession = mutation({
+export const findOne = query({
   args: {
-    id: v.string(),
-    token: v.string(),
-    userId: v.string(),
-    expiresAt: v.number(),
-    ipAddress: v.optional(v.string()),
-    userAgent: v.optional(v.string()),
+    model: v.string(),
+    where: v.array(whereItem),
+    select: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("sessions", {
-      _id: args.id,
-      token: args.token,
-      userId: args.userId,
-      expiresAt: args.expiresAt,
-      ipAddress: args.ipAddress,
-      userAgent: args.userAgent,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+    const table = modelToTable(args.model) as any;
+    const rows = await ctx.db.query(table).collect();
+    const found = rows.find((row: any) => matchesWhere(row, args.where as any));
+    if (!found) return null;
+    return project(found, args.select);
   },
 });
 
-export const updateSession = mutation({
+export const count = query({
   args: {
-    token: v.string(),
-    expiresAt: v.optional(v.number()),
-    ipAddress: v.optional(v.string()),
-    userAgent: v.optional(v.string()),
+    model: v.string(),
+    where: v.optional(v.array(whereItem)),
   },
   handler: async (ctx, args) => {
-    const session = await ctx.db
-      .query("sessions")
-      .filter((q) => q.eq(q.field("token"), args.token))
-      .first();
-
-    if (!session) return null;
-
-    const updates = {};
-    if (args.expiresAt !== undefined) updates.expiresAt = args.expiresAt;
-    if (args.ipAddress !== undefined) updates.ipAddress = args.ipAddress;
-    if (args.userAgent !== undefined) updates.userAgent = args.userAgent;
-    updates.updatedAt = Date.now();
-
-    await ctx.db.patch(session._id, updates);
-    return session._id;
+    const table = modelToTable(args.model) as any;
+    const rows = await ctx.db.query(table).collect();
+    return rows.filter((row: any) => matchesWhere(row, args.where as any)).length;
   },
 });
 
-export const deleteSession = mutation({
-  args: { token: v.string() },
+export const update = mutation({
+  args: {
+    model: v.string(),
+    where: v.array(whereItem),
+    update: v.any(),
+  },
   handler: async (ctx, args) => {
-    const session = await ctx.db
-      .query("sessions")
-      .filter((q) => q.eq(q.field("token"), args.token))
-      .first();
+    const table = modelToTable(args.model) as any;
+    const rows = await ctx.db.query(table).collect();
+    const found = rows.find((row: any) => matchesWhere(row, args.where as any));
+    if (!found) return null;
 
-    if (session) {
-      await ctx.db.delete(session._id);
+    const patch = { ...(args.update as Record<string, any>), updatedAt: Date.now() };
+    await ctx.db.patch(found._id, patch);
+    return await ctx.db.get(found._id);
+  },
+});
+
+export const updateMany = mutation({
+  args: {
+    model: v.string(),
+    where: v.array(whereItem),
+    update: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const table = modelToTable(args.model) as any;
+    const rows = await ctx.db.query(table).collect();
+    const matches = rows.filter((row: any) => matchesWhere(row, args.where as any));
+    const patch = { ...(args.update as Record<string, any>), updatedAt: Date.now() };
+
+    for (const row of matches) {
+      await ctx.db.patch(row._id, patch);
     }
+
+    return matches.length;
   },
 });
 
-export const getAccount = query({
+export const remove = mutation({
   args: {
-    userId: v.string(),
-    providerId: v.string(),
-    accountId: v.string(),
+    model: v.string(),
+    where: v.array(whereItem),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("accounts")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("userId"), args.userId),
-          q.and(
-            q.eq(q.field("providerId"), args.providerId),
-            q.eq(q.field("accountId"), args.accountId)
-          )
-        )
-      )
-      .first();
+    const table = modelToTable(args.model) as any;
+    const rows = await ctx.db.query(table).collect();
+    const found = rows.find((row: any) => matchesWhere(row, args.where as any));
+    if (!found) return null;
+    await ctx.db.delete(found._id);
+    return null;
   },
 });
 
-export const listAccounts = query({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("accounts")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
-      .collect();
-  },
-});
-
-export const createAccount = mutation({
+export const removeMany = mutation({
   args: {
-    id: v.string(),
-    accountId: v.string(),
-    userId: v.string(),
-    providerId: v.string(),
-    accessToken: v.optional(v.string()),
-    refreshToken: v.optional(v.string()),
-    idToken: v.optional(v.string()),
-    accessTokenExpiresAt: v.optional(v.number()),
-    refreshTokenExpiresAt: v.optional(v.number()),
-    scope: v.optional(v.string()),
-    password: v.optional(v.string()),
+    model: v.string(),
+    where: v.array(whereItem),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("accounts", {
-      _id: args.id,
-      accountId: args.accountId,
-      userId: args.userId,
-      providerId: args.providerId,
-      accessToken: args.accessToken,
-      refreshToken: args.refreshToken,
-      idToken: args.idToken,
-      accessTokenExpiresAt: args.accessTokenExpiresAt,
-      refreshTokenExpiresAt: args.refreshTokenExpiresAt,
-      scope: args.scope,
-      password: args.password,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
+    const table = modelToTable(args.model) as any;
+    const rows = await ctx.db.query(table).collect();
+    const matches = rows.filter((row: any) => matchesWhere(row, args.where as any));
 
-export const updateAccount = mutation({
-  args: {
-    userId: v.string(),
-    providerId: v.string(),
-    accountId: v.string(),
-    accessToken: v.optional(v.string()),
-    refreshToken: v.optional(v.string()),
-    idToken: v.optional(v.string()),
-    accessTokenExpiresAt: v.optional(v.number()),
-    refreshTokenExpiresAt: v.optional(v.number()),
-    scope: v.optional(v.string()),
-    password: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const account = await ctx.db
-      .query("accounts")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("userId"), args.userId),
-          q.and(
-            q.eq(q.field("providerId"), args.providerId),
-            q.eq(q.field("accountId"), args.accountId)
-          )
-        )
-      )
-      .first();
-
-    if (!account) return null;
-
-    const updates = {};
-    if (args.accessToken !== undefined) updates.accessToken = args.accessToken;
-    if (args.refreshToken !== undefined) updates.refreshToken = args.refreshToken;
-    if (args.idToken !== undefined) updates.idToken = args.idToken;
-    if (args.accessTokenExpiresAt !== undefined)
-      updates.accessTokenExpiresAt = args.accessTokenExpiresAt;
-    if (args.refreshTokenExpiresAt !== undefined)
-      updates.refreshTokenExpiresAt = args.refreshTokenExpiresAt;
-    if (args.scope !== undefined) updates.scope = args.scope;
-    if (args.password !== undefined) updates.password = args.password;
-    updates.updatedAt = Date.now();
-
-    await ctx.db.patch(account._id, updates);
-    return account._id;
-  },
-});
-
-export const deleteAccount = mutation({
-  args: {
-    userId: v.string(),
-    providerId: v.string(),
-    accountId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const account = await ctx.db
-      .query("accounts")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("userId"), args.userId),
-          q.and(
-            q.eq(q.field("providerId"), args.providerId),
-            q.eq(q.field("accountId"), args.accountId)
-          )
-        )
-      )
-      .first();
-
-    if (account) {
-      await ctx.db.delete(account._id);
+    for (const row of matches) {
+      await ctx.db.delete(row._id);
     }
-  },
-});
 
-export const getVerification = query({
-  args: { identifier: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("verification")
-      .filter((q) => q.eq(q.field("identifier"), args.identifier))
-      .first();
-  },
-});
-
-export const createVerification = mutation({
-  args: {
-    id: v.string(),
-    identifier: v.string(),
-    value: v.string(),
-    expiresAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("verification", {
-      _id: args.id,
-      identifier: args.identifier,
-      value: args.value,
-      expiresAt: args.expiresAt,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-export const deleteVerification = mutation({
-  args: { identifier: v.string() },
-  handler: async (ctx, args) => {
-    const verification = await ctx.db
-      .query("verification")
-      .filter((q) => q.eq(q.field("identifier"), args.identifier))
-      .first();
-
-    if (verification) {
-      await ctx.db.delete(verification._id);
-    }
+    return matches.length;
   },
 });

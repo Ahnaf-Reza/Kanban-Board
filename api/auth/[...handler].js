@@ -24,12 +24,15 @@ function mapAuthError(error, fallbackCode) {
 		};
 	}
 
-	if (message.includes("Postgres URL is required")) {
+	if (
+		message.includes("VITE_CONVEX_URL is required") ||
+		message.includes("Convex")
+	) {
 		return {
 			statusCode: 500,
 			code: "AUTH_DB_MISSING",
 			message,
-			hint: "Set POSTGRES_PRISMA_URL (or POSTGRES_URL / DATABASE_URL) in runtime env vars.",
+			hint: "Set VITE_CONVEX_URL in runtime env vars and ensure Convex deployment is reachable.",
 		};
 	}
 

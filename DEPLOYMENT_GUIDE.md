@@ -16,7 +16,6 @@ In your Vercel project settings, go to **Settings → Environment Variables** an
 |------|-------|-----------------|
 | `VITE_CONVEX_URL` | `https://rare-squirrel-171.convex.cloud` | From earlier deploy ✅ |
 | `VITE_BETTER_AUTH_URL` | `https://YOUR_VERCEL_PROJECT.vercel.app/api/auth` | From Step 1 above |
-| `DATABASE_URL` | `postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public` | From your Postgres provider |
 | `BETTER_AUTH_SECRET` | Use the random value you generated earlier | Save in password manager! |
 | `BETTER_AUTH_JWT_ISSUER` | `https://YOUR_VERCEL_PROJECT.vercel.app/api/auth` | Same as VITE_BETTER_AUTH_URL |
 | `GOOGLE_CLIENT_ID` | Your Google OAuth client ID | From Google Console |

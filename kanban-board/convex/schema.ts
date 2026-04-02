@@ -49,19 +49,22 @@ export default defineSchema({
     .index("by_column_position", ["columnId", "position"]),
 
   sessions: defineTable({
+    id: v.string(),
     token: v.string(),
-    userId: v.id("users"),
+    userId: v.string(),
     expiresAt: v.number(),
     ipAddress: v.optional(v.string()),
     userAgent: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_id", ["id"])
     .index("by_token", ["token"])
     .index("by_userId", ["userId"]),
 
   accounts: defineTable({
-    userId: v.id("users"),
+    id: v.string(),
+    userId: v.string(),
     accountId: v.string(),
     providerId: v.string(),
     accessToken: v.optional(v.string()),
@@ -74,21 +77,25 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_id", ["id"])
     .index("by_userId", ["userId"]),
 
   verification: defineTable({
+    id: v.string(),
     identifier: v.string(),
     value: v.string(),
     expiresAt: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_id", ["id"])
     .index("by_identifier", ["identifier"]),
 
   jwks: defineTable({
+    id: v.string(),
     publicKey: v.string(),
     privateKey: v.string(),
     createdAt: v.number(),
     expiresAt: v.optional(v.number()),
-  }),
+  }).index("by_id", ["id"]),
 });

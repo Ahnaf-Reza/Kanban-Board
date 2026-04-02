@@ -117,7 +117,7 @@ Authentication is now powered by Better Auth.
 - OAuth provider buttons are rendered from `VITE_BETTER_AUTH_OAUTH_PROVIDERS`.
 - Convex requests are authenticated with JWT access tokens from Better Auth `GET /token`.
 - Board data is scoped per authenticated user in Convex.
-- Better Auth auth-state persistence is backed by Postgres via Prisma.
+- Better Auth auth-state persistence is backed by Convex.
 
 Minimum env vars for the full auth stack:
 
