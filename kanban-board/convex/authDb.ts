@@ -136,6 +136,12 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
   }
 
   if (normalizedModel === "user" || normalizedModel === "users") {
+    if (typeof data.id !== "string" || data.id.trim().length === 0) {
+      data.id = crypto.randomUUID();
+    } else {
+      data.id = data.id.trim();
+    }
+
     const email = typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
 
     if (!email) {
@@ -145,6 +151,49 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
     const hasName = typeof data.name === "string" && data.name.trim().length > 0;
     data.email = email;
     data.name = hasName ? data.name.trim() : email.split("@")[0] || "User";
+  }
+
+  if (normalizedModel === "account" || normalizedModel === "accounts") {
+    if (typeof data.id !== "string" || data.id.trim().length === 0) {
+      data.id = crypto.randomUUID();
+    } else {
+      data.id = data.id.trim();
+    }
+
+    const userIdCandidate =
+      typeof data.userId === "string"
+        ? data.userId
+        : typeof data.user?.id === "string"
+          ? data.user.id
+          : "";
+    if (!userIdCandidate || userIdCandidate.trim().length === 0) {
+      throw new Error("Auth account userId is required for accounts model.");
+    }
+    data.userId = userIdCandidate.trim();
+
+    if (typeof data.providerId !== "string" || data.providerId.trim().length === 0) {
+      data.providerId = "google";
+    } else {
+      data.providerId = data.providerId.trim();
+    }
+
+    if (typeof data.accountId !== "string" || data.accountId.trim().length === 0) {
+      throw new Error("Auth accountId is required for accounts model.");
+    }
+    data.accountId = data.accountId.trim();
+
+    const optionalStringKeys = ["accessToken", "refreshToken", "idToken", "scope", "password"];
+    for (const key of optionalStringKeys) {
+      if (typeof data[key] === "undefined") continue;
+      data[key] = typeof data[key] === "string" ? data[key] : String(data[key]);
+    }
+
+    if (typeof data.accessTokenExpiresAt !== "undefined") {
+      data.accessTokenExpiresAt = coerceTimestamp(data.accessTokenExpiresAt, Date.now() + 60 * 60 * 1000);
+    }
+    if (typeof data.refreshTokenExpiresAt !== "undefined") {
+      data.refreshTokenExpiresAt = coerceTimestamp(data.refreshTokenExpiresAt, Date.now() + 30 * 24 * 60 * 60 * 1000);
+    }
   }
 
   if (normalizedModel === "verification" || normalizedModel === "verifications") {
