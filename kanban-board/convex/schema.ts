@@ -58,7 +58,6 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_id", ["id"])
     .index("by_token", ["token"])
     .index("by_userId", ["userId"]),
 
@@ -77,7 +76,6 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_id", ["id"])
     .index("by_userId", ["userId"]),
 
   verification: defineTable({
@@ -88,7 +86,6 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_id", ["id"])
     .index("by_identifier", ["identifier"]),
 
   jwks: defineTable({
@@ -97,5 +94,5 @@ export default defineSchema({
     privateKey: v.string(),
     createdAt: v.number(),
     expiresAt: v.optional(v.number()),
-  }).index("by_id", ["id"]),
+  }),
 });
