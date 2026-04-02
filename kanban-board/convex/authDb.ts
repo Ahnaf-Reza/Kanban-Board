@@ -32,6 +32,10 @@ function modelToTable(model: string): string {
   throw new Error(`Unsupported auth model: ${model}`);
 }
 
+function tableSupportsUpdatedAt(table: string): boolean {
+  return table !== "jwks";
+}
+
 function cmp(fieldValue: any, operator: string, value: any): boolean {
   if (operator === "eq") return fieldValue === value;
   if (operator === "ne") return fieldValue !== value;
@@ -470,7 +474,9 @@ export const create = mutation({
 
     const now = Date.now();
     if (typeof data.createdAt === "undefined") data.createdAt = now;
-    if (typeof data.updatedAt === "undefined") data.updatedAt = now;
+    if (tableSupportsUpdatedAt(table) && typeof data.updatedAt === "undefined") {
+      data.updatedAt = now;
+    }
 
     try {
       const insertedId = await ctx.db.insert(table, data);
@@ -560,12 +566,14 @@ export const update = mutation({
     const found = rows.find((row: any) => matchesWhere(row, args.where as any));
     if (!found) return null;
 
+    const normalizedPatchInput = sanitizeForConvex({ ...(args.update as Record<string, any>) });
+    if (tableSupportsUpdatedAt(table)) {
+      normalizedPatchInput.updatedAt = Date.now();
+    }
+
     const patch = filterToSchemaFields(
       args.model,
-      normalizeUpdateData(
-        args.model,
-        sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() })
-      )
+      normalizeUpdateData(args.model, normalizedPatchInput)
     );
     try {
       await ctx.db.patch(found._id, patch);
@@ -589,12 +597,14 @@ export const updateMany = mutation({
     const table = modelToTable(args.model) as any;
     const rows = await ctx.db.query(table).collect();
     const matches = rows.filter((row: any) => matchesWhere(row, args.where as any));
+    const normalizedPatchInput = sanitizeForConvex({ ...(args.update as Record<string, any>) });
+    if (tableSupportsUpdatedAt(table)) {
+      normalizedPatchInput.updatedAt = Date.now();
+    }
+
     const patch = filterToSchemaFields(
       args.model,
-      normalizeUpdateData(
-        args.model,
-        sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() })
-      )
+      normalizeUpdateData(args.model, normalizedPatchInput)
     );
 
     try {
