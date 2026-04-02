@@ -237,6 +237,35 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
     }
   }
 
+  if (normalizedModel === "jwks" || normalizedModel === "jwk") {
+    if (typeof data.id !== "string" || data.id.trim().length === 0) {
+      data.id = crypto.randomUUID();
+    } else {
+      data.id = data.id.trim();
+    }
+
+    if (typeof data.publicKey !== "string") {
+      data.publicKey = JSON.stringify(data.publicKey ?? "");
+    }
+    if (typeof data.privateKey !== "string") {
+      data.privateKey = JSON.stringify(data.privateKey ?? "");
+    }
+
+    data.publicKey = data.publicKey.trim();
+    data.privateKey = data.privateKey.trim();
+
+    if (!data.publicKey) {
+      throw new Error("Auth jwks publicKey is required for jwks model.");
+    }
+    if (!data.privateKey) {
+      throw new Error("Auth jwks privateKey is required for jwks model.");
+    }
+
+    if (typeof data.expiresAt !== "undefined") {
+      data.expiresAt = coerceTimestamp(data.expiresAt, Date.now() + 30 * 24 * 60 * 60 * 1000);
+    }
+  }
+
   if (normalizedModel === "verification" || normalizedModel === "verifications") {
     if (typeof data.id !== "string" || data.id.trim().length === 0) {
       data.id = crypto.randomUUID();
