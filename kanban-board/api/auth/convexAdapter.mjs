@@ -23,14 +23,23 @@ function sanitizeValue(value) {
 }
 
 function sanitizeWhere(where) {
-  if (!Array.isArray(where)) return where;
-  return where
+  const whereArray = Array.isArray(where)
+    ? where
+    : where && typeof where === "object"
+      ? [where]
+      : [];
+
+  return whereArray
     .map((clause) => {
       if (!clause || typeof clause !== "object") return undefined;
+      if (typeof clause.field !== "string" || clause.field.trim().length === 0) {
+        return undefined;
+      }
       const sanitizedValue = sanitizeValue(clause.value);
       if (typeof sanitizedValue === "undefined") return undefined;
       return {
         ...clause,
+        field: clause.field.trim(),
         value: sanitizedValue,
       };
     })
@@ -125,7 +134,7 @@ export function convexAdapter(convexClient) {
           return await convexClient.mutation(api.authDb.update, {
             model,
             where: sanitizeWhere(where),
-            update: sanitizeValue(update),
+            update: sanitizeValue(update) ?? {},
           });
         } catch (error) {
           throwAdapterError("update", model, { where, update }, error);
@@ -137,7 +146,7 @@ export function convexAdapter(convexClient) {
           return await convexClient.mutation(api.authDb.updateMany, {
             model,
             where: sanitizeWhere(where),
-            update: sanitizeValue(update),
+            update: sanitizeValue(update) ?? {},
           });
         } catch (error) {
           throwAdapterError("updateMany", model, { where, update }, error);

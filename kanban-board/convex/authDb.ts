@@ -292,6 +292,96 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
   return data;
 }
 
+function normalizeUpdateData(model: string, data: Record<string, any>): Record<string, any> {
+  const normalizedModel = model.toLowerCase();
+
+  const toEpochMs = (raw: number): number => {
+    if (raw > 0 && raw < 1_000_000_000_000) {
+      return raw * 1000;
+    }
+    return raw;
+  };
+
+  const coerceTimestamp = (value: any, fallback: number): number => {
+    if (typeof value === "number" && Number.isFinite(value)) return toEpochMs(value);
+    if (typeof value === "string") {
+      const parsedNumber = Number(value);
+      if (Number.isFinite(parsedNumber)) return toEpochMs(parsedNumber);
+      const parsedDate = Date.parse(value);
+      if (!Number.isNaN(parsedDate)) return parsedDate;
+    }
+    return fallback;
+  };
+
+  if (normalizedModel === "account" || normalizedModel === "accounts") {
+    for (const key of ["id", "userId", "accountId", "providerId"]) {
+      if (typeof data[key] === "string") {
+        data[key] = data[key].trim();
+      }
+    }
+    for (const key of ["accessToken", "refreshToken", "idToken", "scope", "password"]) {
+      if (typeof data[key] !== "undefined") {
+        data[key] = typeof data[key] === "string" ? data[key] : String(data[key]);
+      }
+    }
+    if (typeof data.accessTokenExpiresAt !== "undefined") {
+      data.accessTokenExpiresAt = coerceTimestamp(data.accessTokenExpiresAt, Date.now() + 60 * 60 * 1000);
+    }
+    if (typeof data.refreshTokenExpiresAt !== "undefined") {
+      data.refreshTokenExpiresAt = coerceTimestamp(data.refreshTokenExpiresAt, Date.now() + 30 * 24 * 60 * 60 * 1000);
+    }
+  }
+
+  if (normalizedModel === "session" || normalizedModel === "sessions") {
+    for (const key of ["id", "token", "userId"]) {
+      if (typeof data[key] === "string") {
+        data[key] = data[key].trim();
+      }
+    }
+    if (typeof data.expiresAt !== "undefined") {
+      data.expiresAt = coerceTimestamp(data.expiresAt, Date.now() + 7 * 24 * 60 * 60 * 1000);
+    }
+    if (typeof data.ipAddress !== "undefined") {
+      data.ipAddress = data.ipAddress === null ? undefined : String(data.ipAddress);
+    }
+    if (typeof data.userAgent !== "undefined") {
+      data.userAgent = data.userAgent === null ? undefined : String(data.userAgent);
+    }
+  }
+
+  if (normalizedModel === "verification" || normalizedModel === "verifications") {
+    if (typeof data.identifier === "string") data.identifier = data.identifier.trim();
+    if (typeof data.value !== "undefined" && typeof data.value !== "string") {
+      data.value = JSON.stringify(data.value ?? "");
+    }
+    if (typeof data.expiresAt !== "undefined") {
+      data.expiresAt = coerceTimestamp(data.expiresAt, Date.now() + 10 * 60 * 1000);
+    }
+  }
+
+  if (normalizedModel === "jwks" || normalizedModel === "jwk") {
+    if (typeof data.id === "string") data.id = data.id.trim();
+    if (typeof data.publicKey !== "undefined" && typeof data.publicKey !== "string") {
+      data.publicKey = JSON.stringify(data.publicKey ?? "");
+    }
+    if (typeof data.privateKey !== "undefined" && typeof data.privateKey !== "string") {
+      data.privateKey = JSON.stringify(data.privateKey ?? "");
+    }
+    if (typeof data.expiresAt !== "undefined") {
+      data.expiresAt = coerceTimestamp(data.expiresAt, Date.now() + 30 * 24 * 60 * 60 * 1000);
+    }
+  }
+
+  if (typeof data.createdAt !== "undefined") {
+    data.createdAt = coerceTimestamp(data.createdAt, Date.now());
+  }
+  if (typeof data.updatedAt !== "undefined") {
+    data.updatedAt = coerceTimestamp(data.updatedAt, Date.now());
+  }
+
+  return data;
+}
+
 const ALLOWED_FIELDS_BY_MODEL: Record<string, Set<string>> = {
   users: new Set([
     "id",
@@ -472,7 +562,10 @@ export const update = mutation({
 
     const patch = filterToSchemaFields(
       args.model,
-      sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() })
+      normalizeUpdateData(
+        args.model,
+        sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() })
+      )
     );
     try {
       await ctx.db.patch(found._id, patch);
@@ -498,7 +591,10 @@ export const updateMany = mutation({
     const matches = rows.filter((row: any) => matchesWhere(row, args.where as any));
     const patch = filterToSchemaFields(
       args.model,
-      sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() })
+      normalizeUpdateData(
+        args.model,
+        sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() })
+      )
     );
 
     try {
