@@ -11,11 +11,17 @@ function getRequiredDatabaseUrl() {
 
 const globalForPrisma = globalThis;
 
-if (!process.env.DATABASE_URL?.trim()) {
-  getRequiredDatabaseUrl();
-}
+const databaseUrl = getRequiredDatabaseUrl();
 
-const prisma = globalForPrisma.__kanbanPrismaClient ?? new PrismaClient();
+const prisma =
+  globalForPrisma.__kanbanPrismaClient ??
+  new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
+  });
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.__kanbanPrismaClient = prisma;
