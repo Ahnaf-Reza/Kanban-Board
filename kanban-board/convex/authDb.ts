@@ -139,6 +139,77 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
   return data;
 }
 
+const ALLOWED_FIELDS_BY_MODEL: Record<string, Set<string>> = {
+  users: new Set([
+    "id",
+    "name",
+    "email",
+    "emailVerified",
+    "image",
+    "avatarUrl",
+    "tokenIdentifier",
+    "subject",
+    "issuer",
+    "createdAt",
+    "updatedAt",
+    "lastSeenAt",
+  ]),
+  sessions: new Set([
+    "id",
+    "token",
+    "userId",
+    "expiresAt",
+    "ipAddress",
+    "userAgent",
+    "createdAt",
+    "updatedAt",
+  ]),
+  accounts: new Set([
+    "id",
+    "userId",
+    "accountId",
+    "providerId",
+    "accessToken",
+    "refreshToken",
+    "idToken",
+    "accessTokenExpiresAt",
+    "refreshTokenExpiresAt",
+    "scope",
+    "password",
+    "createdAt",
+    "updatedAt",
+  ]),
+  verification: new Set([
+    "id",
+    "identifier",
+    "value",
+    "expiresAt",
+    "createdAt",
+    "updatedAt",
+  ]),
+  jwks: new Set([
+    "id",
+    "publicKey",
+    "privateKey",
+    "createdAt",
+    "expiresAt",
+  ]),
+};
+
+function filterToSchemaFields(model: string, data: Record<string, any>): Record<string, any> {
+  const table = modelToTable(model);
+  const allowed = ALLOWED_FIELDS_BY_MODEL[table];
+  if (!allowed) return data;
+
+  const out: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (allowed.has(key)) {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 export const create = mutation({
   args: {
     model: v.string(),
@@ -146,9 +217,12 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const table = modelToTable(args.model) as any;
-    const data = normalizeCreateData(
+    const data = filterToSchemaFields(
       args.model,
-      sanitizeForConvex({ ...(args.data as Record<string, any>) })
+      normalizeCreateData(
+        args.model,
+        sanitizeForConvex({ ...(args.data as Record<string, any>) })
+      )
     );
 
     const now = Date.now();
@@ -243,7 +317,10 @@ export const update = mutation({
     const found = rows.find((row: any) => matchesWhere(row, args.where as any));
     if (!found) return null;
 
-    const patch = sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() });
+    const patch = filterToSchemaFields(
+      args.model,
+      sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() })
+    );
     try {
       await ctx.db.patch(found._id, patch);
       return await ctx.db.get(found._id);
@@ -266,7 +343,10 @@ export const updateMany = mutation({
     const table = modelToTable(args.model) as any;
     const rows = await ctx.db.query(table).collect();
     const matches = rows.filter((row: any) => matchesWhere(row, args.where as any));
-    const patch = sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() });
+    const patch = filterToSchemaFields(
+      args.model,
+      sanitizeForConvex({ ...(args.update as Record<string, any>), updatedAt: Date.now() })
+    );
 
     try {
       for (const row of matches) {
