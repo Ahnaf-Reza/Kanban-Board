@@ -2,6 +2,17 @@ import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { memoryAdapter } from "@better-auth/memory-adapter";
 
+const memoryDb =
+	globalThis.__kanbanBetterAuthMemoryDb ?? {
+		user: [],
+		session: [],
+		account: [],
+		verification: [],
+		jwks: [],
+	};
+
+globalThis.__kanbanBetterAuthMemoryDb = memoryDb;
+
 function getCsvEnv(name, fallback) {
 	const raw = process.env[name] ?? fallback;
 	return raw
@@ -75,7 +86,7 @@ const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGL
 export const auth = betterAuth({
 	baseURL,
 	secret: betterAuthSecret,
-	database: memoryAdapter(),
+	database: memoryAdapter(memoryDb),
 	trustedOrigins,
 	account: {
 		accountLinking: {
