@@ -1,4 +1,4 @@
-import { action, mutation, query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 
@@ -58,50 +58,5 @@ export const deleteRecord = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id as any);
-  },
-});
-
-/**
- * Public HTTP-callable actions for Better Auth
- */
-
-export const storageCreate = action({
-  args: {
-    table: v.string(),
-    data: v.any(),
-  },
-  handler: async (ctx, args) => {
-    const { table, data } = args;
-    return await ctx.runMutation(createRecord, { table, data });
-  },
-});
-
-export const storageRead = action({
-  args: {
-    table: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.runQuery(getAllRecords, { table: args.table });
-  },
-});
-
-export const storageUpdate = action({
-  args: {
-    table: v.string(),
-    data: v.any(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.runMutation(updateRecord, { table: args.table, data: args.data });
-  },
-});
-
-export const storageDelete = action({
-  args: {
-    table: v.string(),
-    id: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    await ctx.runMutation(deleteRecord, { table: args.table, id: args.id });
-    return { success: true };
   },
 });

@@ -86,12 +86,14 @@ export const upsertCurrentUser = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
+        id: identity.subject,
         tokenIdentifier: identity.tokenIdentifier,
         subject: identity.subject,
         issuer: identity.issuer,
-        email: normalizedEmail,
-        name: nextName,
-        avatarUrl: nextAvatarUrl,
+        email: normalizedEmail ?? existing.email ?? "",
+        emailVerified: true,
+        image: nextAvatarUrl,
+        name: nextName ?? existing.name ?? "",
         updatedAt: now,
         lastSeenAt: now,
       });
@@ -99,12 +101,14 @@ export const upsertCurrentUser = mutation({
     }
 
     return await ctx.db.insert("users", {
+      id: identity.subject,
       tokenIdentifier: identity.tokenIdentifier,
       subject: identity.subject,
       issuer: identity.issuer,
-      email: normalizedEmail,
-      name: nextName,
-      avatarUrl: nextAvatarUrl,
+      email: normalizedEmail ?? "",
+      emailVerified: true,
+      image: nextAvatarUrl,
+      name: nextName ?? "",
       createdAt: now,
       updatedAt: now,
       lastSeenAt: now,
