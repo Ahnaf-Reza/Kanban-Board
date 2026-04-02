@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { dash } from "@better-auth/infra";
-import { memoryAdapter } from "@better-auth/memory-adapter";
+import { createSqliteAdapter } from "../../better-auth-server/src/sqliteAdapter.mjs";
 
 function getCsvEnv(name, fallback) {
 	const raw = process.env[name] ?? fallback;
@@ -33,7 +33,7 @@ function getConvexUrl() {
 	const url = getTrimmedEnv("VITE_CONVEX_URL", "");
 	if (!url) {
 		console.error(
-			"VITE_CONVEX_URL is not set. Auth will fall back to memory storage."
+			"VITE_CONVEX_URL is not set. Auth will use SQLite for persistence."
 		);
 		return null;
 	}
@@ -74,17 +74,7 @@ const betterAuthSecret = getRequiredEnv("BETTER_AUTH_SECRET");
 const betterAuthApiKey = getTrimmedEnv("BETTER_AUTH_API_KEY", "");
 getConvexUrl();
 
-const memoryDb = globalThis.__kanbanBetterAuthMemoryDb ?? {
-	user: [],
-	session: [],
-	account: [],
-	verification: [],
-	jwks: [],
-};
-
-globalThis.__kanbanBetterAuthMemoryDb = memoryDb;
-
-const getDatabaseAdapter = () => memoryAdapter(memoryDb);
+const getDatabaseAdapter = () => createSqliteAdapter();
 
 const plugins = [
 	jwt({

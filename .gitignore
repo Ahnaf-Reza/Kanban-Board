@@ -8,3 +8,8 @@
 better-auth-server/.env
 kanban-board/.env.local
 node_modules
+
+# Local SQLite database (persistent auth storage)
+.auth.db
+*.db
+
