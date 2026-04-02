@@ -3,16 +3,18 @@ import { v } from "convex/values";
 
 export default defineSchema({
   users: defineTable({
-    id: v.string(),
+    id: v.optional(v.string()),
     name: v.string(),
     email: v.string(),
-    emailVerified: v.boolean(),
+    emailVerified: v.optional(v.boolean()),
     image: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
     tokenIdentifier: v.optional(v.string()),
     subject: v.optional(v.string()),
     issuer: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    lastSeenAt: v.optional(v.number()),
   })
     .index("by_email", ["email"])
     .index("by_token_identifier", ["tokenIdentifier"]),
