@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { memoryAdapter } from "@better-auth/memory-adapter";
+import { dash } from "@better-auth/infra";
 
 const memoryDb =
 	globalThis.__kanbanBetterAuthMemoryDb ?? {
@@ -70,6 +71,7 @@ const baseURL = getTrimmedEnv("BETTER_AUTH_URL", resolveDefaultBaseUrl());
 const jwtIssuer = getTrimmedEnv("BETTER_AUTH_JWT_ISSUER", baseURL);
 const trustedOrigins = resolveTrustedOrigins(baseURL);
 const betterAuthSecret = getRequiredEnv("BETTER_AUTH_SECRET");
+const betterAuthApiKey = getTrimmedEnv("BETTER_AUTH_API_KEY", "");
 
 const plugins = [
 	jwt({
@@ -80,6 +82,16 @@ const plugins = [
 		},
 	}),
 ];
+
+if (betterAuthApiKey.length > 0) {
+	plugins.push(
+		dash({
+			apiKey: betterAuthApiKey,
+			apiUrl: process.env.BETTER_AUTH_API_URL,
+			kvUrl: process.env.BETTER_AUTH_KV_URL,
+		})
+	);
+}
 
 const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
