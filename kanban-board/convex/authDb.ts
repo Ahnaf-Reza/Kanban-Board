@@ -110,11 +110,19 @@ function sanitizeForConvex(value: any): any {
 function normalizeCreateData(model: string, data: Record<string, any>): Record<string, any> {
   const normalizedModel = model.toLowerCase();
 
+  const toEpochMs = (raw: number): number => {
+    // Treat 10-digit epoch values as seconds and normalize to milliseconds.
+    if (raw > 0 && raw < 1_000_000_000_000) {
+      return raw * 1000;
+    }
+    return raw;
+  };
+
   const coerceTimestamp = (value: any, fallback: number): number => {
-    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "number" && Number.isFinite(value)) return toEpochMs(value);
     if (typeof value === "string") {
       const parsedNumber = Number(value);
-      if (Number.isFinite(parsedNumber)) return parsedNumber;
+      if (Number.isFinite(parsedNumber)) return toEpochMs(parsedNumber);
       const parsedDate = Date.parse(value);
       if (!Number.isNaN(parsedDate)) return parsedDate;
     }
