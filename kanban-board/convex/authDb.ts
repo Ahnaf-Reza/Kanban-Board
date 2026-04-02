@@ -110,6 +110,17 @@ function sanitizeForConvex(value: any): any {
 function normalizeCreateData(model: string, data: Record<string, any>): Record<string, any> {
   const normalizedModel = model.toLowerCase();
 
+  const coerceTimestamp = (value: any, fallback: number): number => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const parsedNumber = Number(value);
+      if (Number.isFinite(parsedNumber)) return parsedNumber;
+      const parsedDate = Date.parse(value);
+      if (!Number.isNaN(parsedDate)) return parsedDate;
+    }
+    return fallback;
+  };
+
   if (
     (normalizedModel === "session" ||
       normalizedModel === "sessions" ||
@@ -137,6 +148,12 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
   }
 
   if (normalizedModel === "verification" || normalizedModel === "verifications") {
+    if (typeof data.id !== "string" || data.id.trim().length === 0) {
+      data.id = crypto.randomUUID();
+    } else {
+      data.id = data.id.trim();
+    }
+
     if (typeof data.identifier !== "string" || data.identifier.trim().length === 0) {
       data.identifier = "oauth_state";
     } else {
@@ -147,20 +164,11 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
       data.value = JSON.stringify(data.value ?? "");
     }
 
-    if (typeof data.expiresAt === "string") {
-      const parsed = Number(data.expiresAt);
-      if (!Number.isNaN(parsed)) {
-        data.expiresAt = parsed;
-      } else {
-        const parsedDate = Date.parse(data.expiresAt);
-        data.expiresAt = Number.isNaN(parsedDate) ? Date.now() + 10 * 60 * 1000 : parsedDate;
-      }
-    }
-
-    if (typeof data.expiresAt !== "number") {
-      data.expiresAt = Date.now() + 10 * 60 * 1000;
-    }
+    data.expiresAt = coerceTimestamp(data.expiresAt, Date.now() + 10 * 60 * 1000);
   }
+
+  data.createdAt = coerceTimestamp(data.createdAt, Date.now());
+  data.updatedAt = coerceTimestamp(data.updatedAt, Date.now());
 
   return data;
 }
