@@ -98,6 +98,7 @@ export const auth = betterAuth({
 	database: convexAdapter(convexClient),
 	trustedOrigins,
 	account: {
+		storeStateStrategy: "cookie",
 		accountLinking: {
 			enabled: true,
 			trustedProviders: ["google"],
