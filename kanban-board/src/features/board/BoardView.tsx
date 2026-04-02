@@ -194,7 +194,6 @@ export function BoardView() {
             {columnData.map(({ columnId, column, columnTasks }) => (
               <motion.div
                 key={columnId}
-                layout
                 initial={seenColumnIdsRef.current.has(columnId) ? false : { opacity: 0, x: 24 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -24 }}

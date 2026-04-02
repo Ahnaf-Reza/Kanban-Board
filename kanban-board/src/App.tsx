@@ -216,13 +216,11 @@ function App() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-              <Button variant="secondary" onClick={undo} disabled={historyIndex <= 0} className="justify-start gap-2">
+              <Button variant="secondary" size="icon" onClick={undo} disabled={historyIndex <= 0} aria-label="Undo">
                 <RotateCcw size={16} />
-                Undo
               </Button>
-              <Button variant="secondary" onClick={redo} disabled={historyIndex >= historyLength - 1} className="justify-start gap-2">
+              <Button variant="secondary" size="icon" onClick={redo} disabled={historyIndex >= historyLength - 1} aria-label="Redo">
                 <RotateCw size={16} />
-                Redo
               </Button>
               <Button onClick={() => setIsCreateColumnOpen(true)} className="col-span-2 justify-start gap-2 lg:col-span-1">
                 <Plus size={16} />
@@ -230,11 +228,15 @@ function App() {
               </Button>
             </div>
 
-            <div className="mt-auto flex items-center justify-between border-t border-slate-200/80 pt-4 dark:border-slate-700/70">
+            <div className="mt-auto flex items-center justify-center border-t border-slate-200/80 pt-4 dark:border-slate-700/70">
               <Button variant="ghost" size="icon" onClick={toggle} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </Button>
+            </div>
+          </aside>
 
+          <div className="min-w-0 flex-1">
+            <div className="flex justify-end mb-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Open account menu">
@@ -255,9 +257,7 @@ function App() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          </aside>
 
-          <div className="min-w-0 flex-1">
             <header className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
