@@ -1,55 +1,63 @@
 /**
  * Convex Storage Adapter for Better Auth (JavaScript version)
- * Persists all auth data to Convex backend using direct API calls
+ * Persists all auth data to Convex backend using HTTP API
  * Solves state/verification loss on serverless cold starts
  */
 
 export function convexStorageAdapter(convexUrl) {
-  const baseUrl = convexUrl.replace(/\/$/, ""); // Remove trailing slash
-
-  async function callConvexAction(action, args) {
-    const response = await fetch(`${baseUrl}/api/call/${action}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(args),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Convex action "${action}" failed: ${errorText}`);
-    }
-
-    return await response.json();
+  if (!convexUrl || typeof convexUrl !== "string") {
+    throw new Error("convexStorageAdapter requires a valid convexUrl");
   }
 
-  async function callConvexQuery(query, args) {
-    const response = await fetch(`${baseUrl}/api/query/${query}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(args),
-    });
+  const baseUrl = convexUrl.replace(/\/$/, ""); // Remove trailing slash
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Convex query "${query}" failed: ${errorText}`);
+  async function callConvex(type, functionName, args) {
+    try {
+      // Convex HTTP API format: /api/call/module:function
+      const endpoint = `${baseUrl}/api/call/${functionName}`;
+      
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Convex call failed [${response.status}]:`, errorText);
+        throw new Error(
+          `Convex ${functionName} failed: ${response.status} ${errorText}`
+        );
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error(`[convexStorageAdapter] ${functionName} error:`, error.message);
+      throw error;
     }
-
-    return await response.json();
   }
 
   return {
     async create(data) {
+      if (!data || typeof data !== "object") {
+        console.warn("[convexStorageAdapter.create] Invalid data:", typeof data);
+        return;
+      }
+
       for (const [table, records] of Object.entries(data)) {
         if (!Array.isArray(records)) continue;
 
         for (const record of records) {
+          if (!record) continue;
           try {
-            await callConvexAction("authDb:createRecord", {
+            await callConvex("action", "authDb:createRecord", {
               table,
               data: record,
             });
           } catch (error) {
             console.error(`Failed to create ${table} record:`, error.message);
+            // Don't throw - allow initialization to continue
           }
         }
       }
@@ -58,16 +66,19 @@ export function convexStorageAdapter(convexUrl) {
     async read(data) {
       const result = {};
 
+      if (!data || typeof data !== "object") {
+        console.warn("[convexStorageAdapter.read] Invalid data:", typeof data);
+        return result;
+      }
+
       for (const table of Object.keys(data)) {
         try {
-          result[table] = await callConvexQuery("authDb:getAllRecords", {
+          const records = await callConvex("query", "authDb:getAllRecords", {
             table,
           });
+          result[table] = Array.isArray(records) ? records : [];
         } catch (error) {
-          console.error(
-            `Failed to read ${table} records:`,
-            error.message
-          );
+          console.error(`Failed to read ${table} records:`, error.message);
           result[table] = [];
         }
       }
@@ -76,12 +87,18 @@ export function convexStorageAdapter(convexUrl) {
     },
 
     async update(data) {
+      if (!data || typeof data !== "object") {
+        console.warn("[convexStorageAdapter.update] Invalid data:", typeof data);
+        return;
+      }
+
       for (const [table, records] of Object.entries(data)) {
         if (!Array.isArray(records)) continue;
 
         for (const record of records) {
+          if (!record) continue;
           try {
-            await callConvexAction("authDb:updateRecord", {
+            await callConvex("action", "authDb:updateRecord", {
               table,
               data: record,
             });
@@ -96,12 +113,18 @@ export function convexStorageAdapter(convexUrl) {
     },
 
     async delete(data) {
+      if (!data || typeof data !== "object") {
+        console.warn("[convexStorageAdapter.delete] Invalid data:", typeof data);
+        return;
+      }
+
       for (const [table, records] of Object.entries(data)) {
         if (!Array.isArray(records)) continue;
 
         for (const record of records) {
+          if (!record || !record.id) continue;
           try {
-            await callConvexAction("authDb:deleteRecord", {
+            await callConvex("action", "authDb:deleteRecord", {
               table,
               id: record.id,
             });
@@ -115,4 +138,3 @@ export function convexStorageAdapter(convexUrl) {
       }
     },
   };
-}

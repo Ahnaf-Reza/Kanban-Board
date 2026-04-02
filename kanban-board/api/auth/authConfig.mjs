@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins/jwt";
 import { dash } from "@better-auth/infra";
 import { convexStorageAdapter } from "./convexStorageAdapter.mjs";
+import { memoryAdapter } from "@better-auth/memory-adapter";
 
 function getCsvEnv(name, fallback) {
 	const raw = process.env[name] ?? fallback;
@@ -30,7 +31,14 @@ function getRequiredEnv(name) {
 }
 
 function getConvexUrl() {
-	return getRequiredEnv("VITE_CONVEX_URL");
+	const url = getTrimmedEnv("VITE_CONVEX_URL", "");
+	if (!url) {
+		console.error(
+			"VITE_CONVEX_URL is not set. Auth will fall back to memory storage."
+		);
+		return null;
+	}
+	return url;
 }
 
 function resolveDefaultBaseUrl() {
@@ -67,6 +75,34 @@ const betterAuthSecret = getRequiredEnv("BETTER_AUTH_SECRET");
 const betterAuthApiKey = getTrimmedEnv("BETTER_AUTH_API_KEY", "");
 const convexUrl = getConvexUrl();
 
+// Determine database adapter: Convex for production, memory fallback for dev
+const getDatabaseAdapter = () => {
+	if (convexUrl) {
+		try {
+			return convexStorageAdapter(convexUrl);
+		} catch (error) {
+			console.error("Failed to initialize Convex storage adapter:", error.message);
+			console.warn("Falling back to in-memory storage");
+			return memoryAdapter({
+				user: [],
+				session: [],
+				account: [],
+				verification: [],
+				jwks: [],
+			});
+		}
+	}
+	
+	console.warn("VITE_CONVEX_URL not available - using in-memory storage");
+	return memoryAdapter({
+		user: [],
+		session: [],
+		account: [],
+		verification: [],
+		jwks: [],
+	});
+};
+
 const plugins = [
 	jwt({
 		jwt: {
@@ -85,7 +121,7 @@ const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGL
 export const auth = betterAuth({
 	baseURL,
 	secret: betterAuthSecret,
-	database: convexStorageAdapter(convexUrl),
+	database: getDatabaseAdapter(),
 	trustedOrigins,
 	account: {
 		accountLinking: {
