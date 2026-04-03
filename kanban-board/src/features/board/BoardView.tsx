@@ -60,7 +60,18 @@ export function BoardView() {
 
           const columnMatchesQuery = normalizedQuery.length > 0 && column.title.toLowerCase().includes(normalizedQuery);
           const columnTasks = column.taskIds
-            .filter((taskId) => (normalizedQuery ? filteredTaskIds.has(taskId) : true))
+            .filter((taskId) => {
+              if (!normalizedQuery) {
+                return true;
+              }
+
+              // If the query matches the column title, show all tasks in that column.
+              if (columnMatchesQuery) {
+                return true;
+              }
+
+              return filteredTaskIds.has(taskId);
+            })
             .map((taskId) => tasks[taskId])
             .filter((task): task is Task => Boolean(task));
 
