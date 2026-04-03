@@ -1,4 +1,5 @@
 import {
+  type CollisionDetection,
   DndContext,
   DragOverlay,
   KeyboardSensor,
@@ -106,6 +107,33 @@ export function BoardView() {
     }),
   );
 
+  const collisionDetectionStrategy: CollisionDetection = (args) => {
+    const activeType = args.active.data.current?.type as "task" | "column" | undefined;
+
+    // Keep column dragging scoped to columns only so nested tasks don't interfere.
+    if (activeType === "column") {
+      const columnContainers = args.droppableContainers.filter(
+        (container) => container.data.current?.type === "column",
+      );
+
+      return closestCorners({
+        ...args,
+        droppableContainers: columnContainers,
+      });
+    }
+
+    // Tasks can target tasks (reorder) and columns (move between columns).
+    const taskAndColumnContainers = args.droppableContainers.filter((container) => {
+      const type = container.data.current?.type;
+      return type === "task" || type === "column";
+    });
+
+    return closestCorners({
+      ...args,
+      droppableContainers: taskAndColumnContainers,
+    });
+  };
+
   const findTaskById = (taskId: TaskId): Task | null => tasks[taskId] ?? null;
 
   const findColumnById = (columnId: ColumnId): BoardColumn | null => columns[columnId] ?? null;
@@ -186,7 +214,7 @@ export function BoardView() {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetectionStrategy}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
