@@ -27,6 +27,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 export function BoardView() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeColumnPreview, setActiveColumnPreview] = useState<{ id: ColumnId; title: string; tasks: Task[] } | null>(null);
+  const [dragTaskIdsByColumn, setDragTaskIdsByColumn] = useState<Record<ColumnId, TaskId[]> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [pendingColumnDelete, setPendingColumnDelete] = useState<{ id: ColumnId; title: string } | null>(null);
@@ -160,6 +161,29 @@ export function BoardView() {
     return null;
   };
 
+  const findColumnIdByTaskIdFromPreview = (preview: Record<ColumnId, TaskId[]>, taskId: TaskId): ColumnId | null => {
+    for (const [columnId, taskIds] of Object.entries(preview)) {
+      if (taskIds.includes(taskId)) {
+        return columnId as ColumnId;
+      }
+    }
+
+    return null;
+  };
+
+  const getTasksForColumn = (columnId: ColumnId, fallbackTasks: Task[]): Task[] => {
+    if (normalizedQuery || !dragTaskIdsByColumn) {
+      return fallbackTasks;
+    }
+
+    const previewTaskIds = dragTaskIdsByColumn[columnId];
+    if (!previewTaskIds) {
+      return fallbackTasks;
+    }
+
+    return previewTaskIds.map((taskId) => tasks[taskId]).filter((task): task is Task => Boolean(task));
+  };
+
   const reorderTask = (activeId: TaskId, overId: TaskId) => {
     const fromColumn = findColumnByTaskId(activeId);
     const overColumn = findColumnByTaskId(overId);
@@ -205,16 +229,103 @@ export function BoardView() {
       const task = findTaskById(event.active.id as TaskId);
       setActiveTask(task);
       setActiveColumnPreview(null);
+
+      // Keep a local drag preview order so cross-column hover shows drop placement.
+      if (!normalizedQuery) {
+        setDragTaskIdsByColumn(() => {
+          const next: Record<ColumnId, TaskId[]> = {} as Record<ColumnId, TaskId[]>;
+          for (const column of Object.values(columns)) {
+            next[column.id] = [...column.taskIds];
+          }
+          return next;
+        });
+      }
     }
   };
 
-  const handleDragOver = (_event: DragOverEvent) => {
-    void _event;
+  const handleDragOver = (event: DragOverEvent) => {
+    if (normalizedQuery) return;
+
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeType = active.data.current?.type as "task" | "column" | undefined;
+    const overType = over.data.current?.type as "task" | "column" | undefined;
+    if (activeType !== "task") return;
+    if (overType !== "task" && overType !== "column") return;
+
+    setDragTaskIdsByColumn((previous) => {
+      if (!previous) {
+        return previous;
+      }
+
+      const taskId = active.id as TaskId;
+      const sourceColumnId = findColumnIdByTaskIdFromPreview(previous, taskId);
+      if (!sourceColumnId) {
+        return previous;
+      }
+
+      const targetColumnId =
+        overType === "column"
+          ? (over.id as ColumnId)
+          : findColumnIdByTaskIdFromPreview(previous, over.id as TaskId);
+
+      if (!targetColumnId) {
+        return previous;
+      }
+
+      const sourceTaskIds = previous[sourceColumnId];
+      const targetTaskIds = previous[targetColumnId];
+      if (!sourceTaskIds || !targetTaskIds) {
+        return previous;
+      }
+
+      const sourceIndex = sourceTaskIds.indexOf(taskId);
+      if (sourceIndex === -1) {
+        return previous;
+      }
+
+      const nextPreview: Record<ColumnId, TaskId[]> = { ...previous };
+
+      if (sourceColumnId === targetColumnId) {
+        if (overType !== "task") {
+          return previous;
+        }
+
+        const overTaskId = over.id as TaskId;
+        const targetIndex = sourceTaskIds.indexOf(overTaskId);
+        if (targetIndex === -1 || targetIndex === sourceIndex) {
+          return previous;
+        }
+
+        const reordered = [...sourceTaskIds];
+        reordered.splice(sourceIndex, 1);
+        reordered.splice(targetIndex, 0, taskId);
+        nextPreview[sourceColumnId] = reordered;
+        return nextPreview;
+      }
+
+      const nextSourceTaskIds = [...sourceTaskIds];
+      nextSourceTaskIds.splice(sourceIndex, 1);
+
+      const nextTargetTaskIds = [...targetTaskIds];
+      const targetIndex =
+        overType === "task"
+          ? nextTargetTaskIds.indexOf(over.id as TaskId)
+          : nextTargetTaskIds.length;
+      const safeTargetIndex = targetIndex === -1 ? nextTargetTaskIds.length : targetIndex;
+      nextTargetTaskIds.splice(safeTargetIndex, 0, taskId);
+
+      nextPreview[sourceColumnId] = nextSourceTaskIds;
+      nextPreview[targetColumnId] = nextTargetTaskIds;
+      return nextPreview;
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
+    setDragTaskIdsByColumn(null);
 
     const activeType = active.data.current?.type as "task" | "column" | undefined;
 
@@ -265,6 +376,7 @@ export function BoardView() {
   const handleDragCancel = () => {
     setActiveTask(null);
     setActiveColumnPreview(null);
+    setDragTaskIdsByColumn(null);
   };
 
   const confirmDeleteColumn = () => {
@@ -385,7 +497,7 @@ export function BoardView() {
                 >
                   <SortableColumn
                     column={column}
-                    tasks={columnTasks}
+                    tasks={getTasksForColumn(columnId, columnTasks)}
                     onAddTask={(content) => addTask(column.id, content)}
                     onRenameColumn={(title) => renameColumn(column.id, title)}
                     onDeleteTask={(taskId) => deleteTask(taskId, column.id)}
