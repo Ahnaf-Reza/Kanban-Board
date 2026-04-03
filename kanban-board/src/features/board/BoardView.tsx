@@ -294,9 +294,9 @@ export function BoardView() {
   const horizontalEdgeMask = canScrollLeft
     ? canScrollRight
       ? `linear-gradient(to right, transparent 0, black ${edgeFadeSize}px, black calc(100% - ${edgeFadeSize}px), transparent 100%)`
-      : `linear-gradient(to right, black 0, black calc(100% - ${edgeFadeSize}px), transparent 100%)`
+      : `linear-gradient(to right, transparent 0, black ${edgeFadeSize}px, black 100%)`
     : canScrollRight
-      ? `linear-gradient(to right, transparent 0, black ${edgeFadeSize}px, black 100%)`
+      ? `linear-gradient(to right, black 0, black calc(100% - ${edgeFadeSize}px), transparent 100%)`
       : undefined;
 
   useEffect(() => {
