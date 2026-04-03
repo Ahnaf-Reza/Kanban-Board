@@ -98,12 +98,14 @@ export function TaskCard({ task, isDragging, onDelete, onEditingChange }: TaskCa
               aria-label="Task content"
               className="w-full resize-none rounded border-0 bg-transparent p-0 text-sm text-slate-800 focus:ring-0 dark:text-slate-100 break-words overflow-hidden"
             />
-          ) : (
+          ) : content.trim() ? (
             <p className="w-full whitespace-pre-wrap break-words text-sm text-slate-800 dark:text-slate-100 overflow-hidden">{content}</p>
+          ) : (
+            <p className="w-full text-sm text-slate-500 italic">Drop task here</p>
           )}
         </div>
 
-        {onDelete ? (
+        {onDelete && content.trim() ? (
           <IconButton
             label="Delete task"
             variant="ghost"
@@ -152,7 +154,9 @@ export function TaskCard({ task, isDragging, onDelete, onEditingChange }: TaskCa
               handleSubmit(content);
               return;
             }
-            setEditingState(true);
+            if (content.trim()) {
+              setEditingState(true);
+            }
           }}
           icon={isEditing ? <Check className="h-4 w-4" aria-hidden="true" /> : <Pencil className="h-4 w-4" aria-hidden="true" />}
         />
