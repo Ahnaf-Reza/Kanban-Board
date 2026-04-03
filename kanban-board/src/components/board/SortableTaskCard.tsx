@@ -30,7 +30,13 @@ export function SortableTaskCard({ task, columnId, onDelete }: SortableTaskCardP
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={isEditing ? undefined : "touch-none select-none"}
+      {...attributes}
+      {...listeners}
+    >
       <TaskCard
         task={task}
         isDragging={isDragging}

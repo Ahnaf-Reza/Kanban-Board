@@ -100,7 +100,7 @@ export function Column({
       <header className="flex items-center gap-2">
         <button
           type="button"
-          className="cursor-grab rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 active:cursor-grabbing dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 shrink-0"
+          className="cursor-grab touch-none select-none rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 active:cursor-grabbing dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 shrink-0"
           aria-label={`Drag column ${column.title}`}
           title="Drag column"
           {...dragHandleProps}

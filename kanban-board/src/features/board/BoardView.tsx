@@ -3,7 +3,7 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   closestCorners,
   useSensor,
@@ -104,7 +104,7 @@ export function BoardView() {
   }, [columnData]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8,
       },
@@ -363,14 +363,15 @@ export function BoardView() {
         <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-hidden pl-2 pb-4 pt-4 md:pl-3"
+            className="flex gap-4 overflow-x-auto pl-2 pb-4 pt-4 md:pl-3"
             style={
               horizontalEdgeMask
                 ? {
                     WebkitMaskImage: horizontalEdgeMask,
                     maskImage: horizontalEdgeMask,
+                    touchAction: "pan-x",
                   }
-                : undefined
+                : { touchAction: "pan-x" }
             }
           >
             <AnimatePresence initial={false}>
