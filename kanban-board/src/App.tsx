@@ -209,7 +209,7 @@ function App() {
     <main className={backgroundClassName}>
       <section className="w-full pb-8 pt-6 lg:pr-4">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <aside className="flex w-full flex-col gap-5 rounded-2xl border border-white/40 bg-white/75 p-4 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70 lg:sticky lg:top-6 lg:w-72 lg:shrink-0 lg:rounded-l-none lg:border-l-0">
+          <aside className="flex w-full flex-col gap-5 rounded-2xl border border-white/40 bg-white/75 p-4 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70 lg:sticky lg:top-6 lg:w-72 lg:shrink-0 lg:rounded-l-none lg:border-l-0 lg:ml-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-cyan-300">Production Board</p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight">Kanban Workspace</h1>
