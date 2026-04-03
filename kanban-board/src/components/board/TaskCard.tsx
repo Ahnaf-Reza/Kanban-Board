@@ -85,7 +85,7 @@ export function TaskCard({ task, isDragging, onDelete, onEditingChange }: TaskCa
   };
 
   return (
-    <Card isDragging={isDragging} className="cursor-grab active:cursor-grabbing dark:border-slate-700 dark:bg-slate-900">
+    <Card isDragging={isDragging} className="cursor-grab active:cursor-grabbing dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
       <div className="flex items-start justify-between gap-2">
         {isEditing ? (
           <AutoTextarea
