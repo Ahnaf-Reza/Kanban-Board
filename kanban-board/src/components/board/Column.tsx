@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
 import type { Column as BoardColumn, Task } from "../../types/board";
 import { AutoTextarea } from "../ui/AutoTextarea";
 import { Button } from "../ui/Button";
@@ -70,20 +71,18 @@ export function Column({
       ref={setNodeRef}
       className="w-72 flex-shrink-0 space-y-3 rounded-xl border border-slate-200/70 bg-slate-100/80 p-3 shadow-sm backdrop-blur-sm transition-colors dark:border-slate-700/60 dark:bg-slate-800/70"
     >
-      <header className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="cursor-grab rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 active:cursor-grabbing dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-            aria-label={`Drag column ${column.title}`}
-            title="Drag column"
-            {...dragHandleProps}
-          >
-            ::
-          </button>
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{column.title}</h2>
-        </div>
-        <div className="flex items-center gap-1">
+      <header className="flex items-center gap-2">
+        <button
+          type="button"
+          className="cursor-grab rounded px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 active:cursor-grabbing dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200 shrink-0"
+          aria-label={`Drag column ${column.title}`}
+          title="Drag column"
+          {...dragHandleProps}
+        >
+          ::
+        </button>
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate min-w-0 flex-1">{column.title}</h2>
+        <div className="flex items-center gap-1 shrink-0">
           <span className="rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-200">{tasks.length}</span>
           <Button
             size="sm"
@@ -91,7 +90,7 @@ export function Column({
             className="px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-300 dark:hover:bg-red-950/40"
             onClick={onDeleteColumn}
           >
-            Delete
+            <X size={14} />
           </Button>
         </div>
       </header>
