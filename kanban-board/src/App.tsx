@@ -257,9 +257,9 @@ function App() {
 
             <header className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
               <div className="mb-5 text-left">
-                <p className="text-base font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Welcome back</p>
+                <p className="text-base font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Welcome back,</p>
                 <h2 className="text-3xl font-bold leading-tight text-slate-800 dark:text-slate-100 md:text-4xl">
-                  {sessionUser?.name || "User"},
+                  {sessionUser?.name || "User"}
                 </h2>
               </div>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">

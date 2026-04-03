@@ -31,10 +31,8 @@ export function BoardView() {
   const [pendingColumnDelete, setPendingColumnDelete] = useState<{ id: ColumnId; title: string } | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  const [isColumnsIdle, setIsColumnsIdle] = useState(true);
   const seenColumnIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollIdleTimeoutRef = useRef<number | null>(null);
 
   const tasks = useBoardStore((state) => state.tasks);
   const columns = useBoardStore((state) => state.columns);
@@ -188,8 +186,6 @@ export function BoardView() {
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    setIsColumnsIdle(false);
-
     const activeType = event.active.data.current?.type as "task" | "column" | undefined;
 
     if (activeType === "column") {
@@ -212,7 +208,6 @@ export function BoardView() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
-    setIsColumnsIdle(true);
 
     const activeType = active.data.current?.type as "task" | "column" | undefined;
 
@@ -263,7 +258,6 @@ export function BoardView() {
   const handleDragCancel = () => {
     setActiveTask(null);
     setActiveColumnPreview(null);
-    setIsColumnsIdle(true);
   };
 
   const confirmDeleteColumn = () => {
@@ -292,25 +286,6 @@ export function BoardView() {
     }
   };
 
-  const markColumnsMoving = () => {
-    setIsColumnsIdle(false);
-    if (scrollIdleTimeoutRef.current !== null) {
-      window.clearTimeout(scrollIdleTimeoutRef.current);
-      scrollIdleTimeoutRef.current = null;
-    }
-  };
-
-  const markColumnsIdleSoon = () => {
-    if (scrollIdleTimeoutRef.current !== null) {
-      window.clearTimeout(scrollIdleTimeoutRef.current);
-    }
-
-    scrollIdleTimeoutRef.current = window.setTimeout(() => {
-      setIsColumnsIdle(true);
-      scrollIdleTimeoutRef.current = null;
-    }, 180);
-  };
-
   useEffect(() => {
     updateScrollButtons();
   }, [columnData]);
@@ -320,36 +295,19 @@ export function BoardView() {
     const handleWheel = (e: WheelEvent) => {
       if (e.shiftKey) {
         e.preventDefault();
-        markColumnsMoving();
         scrollRef.current?.scrollBy({ left: e.deltaY, behavior: 'smooth' });
-        markColumnsIdleSoon();
       }
     };
     const element = scrollRef.current;
     if (element) {
-      const handleScrollWithIdle = () => {
-        updateScrollButtons();
-        markColumnsMoving();
-        markColumnsIdleSoon();
-      };
-
-      element.addEventListener('scroll', handleScrollWithIdle);
+      element.addEventListener('scroll', updateScrollButtons);
       element.addEventListener('wheel', handleWheel);
       return () => {
-        element.removeEventListener('scroll', handleScrollWithIdle);
+        element.removeEventListener('scroll', updateScrollButtons);
         element.removeEventListener('wheel', handleWheel);
       };
     }
   }, []);
-
-  useEffect(
-    () => () => {
-      if (scrollIdleTimeoutRef.current !== null) {
-        window.clearTimeout(scrollIdleTimeoutRef.current);
-      }
-    },
-    [],
-  );
 
   const isSearchExpanded = isSearchFocused || searchQuery.trim().length > 0;
 
@@ -362,7 +320,7 @@ export function BoardView() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="pl-2 pr-12 pt-4 md:pl-3 md:pr-16">
+      <div className="px-2 pt-4 md:px-3">
         <div className={`origin-left transition-all duration-300 ease-out ${isSearchExpanded ? "w-full" : "w-1/2"}`}>
           <Input
             value={searchQuery}
@@ -410,13 +368,6 @@ export function BoardView() {
             </AnimatePresence>
           </div>
         </SortableContext>
-
-        {canScrollLeft && isColumnsIdle ? (
-          <div className="pointer-events-none absolute left-2 top-4 z-[5] h-[calc(100%-2rem)] w-10 bg-gradient-to-r from-slate-100 via-slate-100/80 to-transparent dark:from-slate-900 dark:via-slate-900/80 md:left-3" />
-        ) : null}
-        {canScrollRight && isColumnsIdle ? (
-          <div className="pointer-events-none absolute right-12 top-4 z-[5] h-[calc(100%-2rem)] w-10 bg-gradient-to-l from-slate-100 via-slate-100/80 to-transparent dark:from-slate-900 dark:via-slate-900/80 md:right-16" />
-        ) : null}
 
         <Button
           variant="ghost"
