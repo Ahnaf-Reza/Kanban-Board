@@ -24,7 +24,6 @@ import type { Column as BoardColumn, ColumnId, Task, TaskId } from "../../types/
 
 export function BoardView() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [activeColumnPreview, setActiveColumnPreview] = useState<{ column: BoardColumn; tasks: Task[] } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [pendingColumnDelete, setPendingColumnDelete] = useState<{ id: ColumnId; title: string } | null>(null);
   const seenColumnIdsRef = useRef<Set<string>>(new Set());
@@ -159,34 +158,12 @@ export function BoardView() {
     moveTask(activeId, fromColumn.id, overColumn.id, toIndex);
   };
 
-  const buildColumnPreview = (columnId: ColumnId) => {
-    const column = findColumnById(columnId);
-    if (!column) return null;
-
-    const columnTasks = column.taskIds
-      .map((taskId) => tasks[taskId])
-      .filter((task): task is Task => Boolean(task));
-
-    return {
-      column,
-      tasks: columnTasks,
-    };
-  };
-
   const handleDragStart = (event: DragStartEvent) => {
     const activeType = event.active.data.current?.type as "task" | "column" | undefined;
+    if (activeType !== "task") return;
 
-    if (activeType === "task") {
-      const task = findTaskById(event.active.id as TaskId);
-      setActiveTask(task);
-      setActiveColumnPreview(null);
-      return;
-    }
-
-    if (activeType === "column") {
-      setActiveTask(null);
-      setActiveColumnPreview(buildColumnPreview(event.active.id as ColumnId));
-    }
+    const task = findTaskById(event.active.id as TaskId);
+    setActiveTask(task);
   };
 
   const handleDragOver = (_event: DragOverEvent) => {
@@ -196,7 +173,6 @@ export function BoardView() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
-    setActiveColumnPreview(null);
 
     if (!over) return;
 
@@ -234,7 +210,6 @@ export function BoardView() {
 
   const handleDragCancel = () => {
     setActiveTask(null);
-    setActiveColumnPreview(null);
   };
 
   const confirmDeleteColumn = () => {
@@ -286,29 +261,7 @@ export function BoardView() {
         </div>
       </SortableContext>
 
-      <DragOverlay dropAnimation={{ duration: 140, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
-        {activeTask ? <TaskCard task={activeTask} isDragging /> : null}
-
-        {!activeTask && activeColumnPreview ? (
-          <section className="w-72 cursor-grabbing space-y-3 rounded-xl border border-slate-200/80 bg-slate-100/95 p-3 shadow-2xl backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-800/95">
-            <header className="flex items-center gap-2">
-              <div className="rounded bg-slate-300 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300">::</div>
-              <h2 className="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{activeColumnPreview.column.title}</h2>
-            </header>
-
-            <div className="space-y-2">
-              {activeColumnPreview.tasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                >
-                  {task.content}
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-      </DragOverlay>
+      <DragOverlay>{activeTask ? <TaskCard task={activeTask} isDragging /> : null}</DragOverlay>
 
       <Modal
         open={pendingColumnDelete !== null}
