@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useDroppable, useDndMonitor } from "@dnd-kit/core";
+import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Pencil, X } from "lucide-react";
@@ -38,9 +38,6 @@ export function Column({
   const previousTaskCountRef = useRef(tasks.length);
   const seenTaskIdsRef = useRef<Set<string>>(new Set(tasks.map((task) => task.id)));
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
-  const { active } = useDndMonitor();
-  const activeType = active?.data.current?.type;
-  const isTaskDraggingOver = isOver && activeType === "task";
 
   useEffect(() => {
     setTitleDraft(column.title);
@@ -94,11 +91,6 @@ export function Column({
     onRenameColumn(nextTitle);
     setIsEditingTitle(false);
   };
-
-  const sortableItems = tasks.map((task) => task.id);
-  if (isTaskDraggingOver) {
-    sortableItems.push(active.id as string);
-  }
 
   return (
     <section
@@ -175,7 +167,7 @@ export function Column({
         </div>
       </header>
 
-      <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
+      <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {tasks.length === 0 ? (
             <Card className="text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
@@ -195,18 +187,6 @@ export function Column({
                 <SortableTaskCard task={task} columnId={column.id} onDelete={() => onDeleteTask(task.id)} />
               </motion.div>
             ))}
-            {isTaskDraggingOver && (
-              <motion.div
-                key={active.id}
-                layout
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
-              >
-                <SortableTaskCard task={{id: active.id as string, content: '', createdAt: new Date()}} columnId={column.id} onDelete={() => {}} />
-              </motion.div>
-            )}
           </AnimatePresence>
         </div>
       </SortableContext>
