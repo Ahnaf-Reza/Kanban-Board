@@ -85,21 +85,23 @@ export function TaskCard({ task, isDragging, onDelete, onEditingChange }: TaskCa
   };
 
   return (
-    <Card isDragging={isDragging} className="cursor-grab active:cursor-grabbing dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
-      <div className="flex items-start justify-between gap-2">
-        {isEditing ? (
-          <AutoTextarea
-            value={content}
-            onChange={handleChange}
-            onSubmit={handleSubmit}
-            onBlur={() => setEditingState(false)}
-            autoFocus
-            aria-label="Task content"
-            className="w-full resize-none rounded border-0 bg-transparent p-0 text-sm text-slate-800 focus:ring-0 dark:text-slate-100"
-          />
-        ) : (
-          <p className="w-full whitespace-pre-wrap break-words text-sm text-slate-800 dark:text-slate-100">{content}</p>
-        )}
+    <Card isDragging={isDragging} className="cursor-grab active:cursor-grabbing dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <AutoTextarea
+              value={content}
+              onChange={handleChange}
+              onSubmit={handleSubmit}
+              onBlur={() => setEditingState(false)}
+              autoFocus
+              aria-label="Task content"
+              className="w-full resize-none rounded border-0 bg-transparent p-0 text-sm text-slate-800 focus:ring-0 dark:text-slate-100 break-words overflow-hidden"
+            />
+          ) : (
+            <p className="w-full whitespace-pre-wrap break-words text-sm text-slate-800 dark:text-slate-100 overflow-hidden">{content}</p>
+          )}
+        </div>
 
         {onDelete ? (
           <IconButton
@@ -107,8 +109,8 @@ export function TaskCard({ task, isDragging, onDelete, onEditingChange }: TaskCa
             variant="ghost"
             size="sm"
             className={isEditing
-              ? "text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-300 dark:hover:bg-red-950/40"
-              : "text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"}
+              ? "text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-300 dark:hover:bg-red-950/40 flex-shrink-0"
+              : "text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 flex-shrink-0"}
             onClick={(event) => {
               event.stopPropagation();
               onDelete();

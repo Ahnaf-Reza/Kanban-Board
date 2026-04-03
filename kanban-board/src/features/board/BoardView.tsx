@@ -323,7 +323,7 @@ export function BoardView() {
                 activeColumnPreview.tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 overflow-hidden break-words"
                   >
                     {task.content}
                   </div>
