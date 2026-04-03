@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Pencil } from "lucide-react";
 import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { useOptimisticUpdate } from "../../hooks/useOptimisticUpdate";
 import { updateTaskRemote } from "../../lib/taskApi";
@@ -85,7 +84,6 @@ export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
           onSubmit={handleSubmit}
           aria-label="Task content"
           className="w-full resize-none rounded border-0 bg-transparent p-0 text-sm text-slate-800 focus:ring-0 dark:text-slate-100"
-          data-task-id={task.id}
         />
 
         {onDelete ? (
@@ -117,23 +115,12 @@ export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
         ) : null}
       </div>
 
-      <div className="mt-2 flex justify-end">
-        <IconButton
-          label="Edit task"
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            // Focus the textarea when edit is clicked
-            const textarea = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLTextAreaElement;
-            if (textarea) {
-              textarea.focus();
-              textarea.select();
-            }
-          }}
-          icon={<Pencil size={12} />}
-          className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
-        />
-      </div>
+      <p
+        className="mt-2 text-xs text-slate-500 dark:text-slate-400"
+        aria-live="polite"
+      >
+        {statusMessage}
+      </p>
     </Card>
   );
 }

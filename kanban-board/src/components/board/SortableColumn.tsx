@@ -1,6 +1,6 @@
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
-import type { Column as BoardColumn, Task, TaskId, ColumnId } from "../../types/board";
+import type { Column as BoardColumn, Task, TaskId } from "../../types/board";
 import { Column } from "./Column";
 
 type SortableColumnProps = {
@@ -9,7 +9,6 @@ type SortableColumnProps = {
   onAddTask: (content: string) => void;
   onDeleteTask: (taskId: TaskId) => void;
   onDeleteColumn: () => void;
-  onEditColumn?: (columnId: ColumnId, newTitle: string) => void;
 };
 
 export function SortableColumn({
@@ -18,7 +17,6 @@ export function SortableColumn({
   onAddTask,
   onDeleteTask,
   onDeleteColumn,
-  onEditColumn,
 }: SortableColumnProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: column.id,
@@ -42,7 +40,6 @@ export function SortableColumn({
         onAddTask={onAddTask}
         onDeleteTask={onDeleteTask}
         onDeleteColumn={onDeleteColumn}
-        onEditColumn={onEditColumn}
         dragHandleProps={{ ...(attributes as React.ButtonHTMLAttributes<HTMLButtonElement>), ...(listeners ?? {}) }}
       />
     </div>
