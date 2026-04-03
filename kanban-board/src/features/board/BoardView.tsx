@@ -335,7 +335,7 @@ export function BoardView() {
         </Button>
 
         <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
-          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden pl-2 pr-24 pb-4 pt-4 md:pl-3 md:pr-28">
+          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden pl-2 pr-12 pb-4 pt-4 md:pl-3 md:pr-16">
             <AnimatePresence initial={false}>
               {columnData.map(({ columnId, column, columnTasks }) => (
                 <motion.div
