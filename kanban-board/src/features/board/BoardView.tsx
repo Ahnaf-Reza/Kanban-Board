@@ -216,6 +216,12 @@ export function BoardView() {
     });
   };
 
+  const clearTaskPreviewNextFrame = () => {
+    window.requestAnimationFrame(() => {
+      setDragTaskIdsByColumn(null);
+    });
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const activeType = event.active.data.current?.type as "task" | "column" | undefined;
 
@@ -325,7 +331,6 @@ export function BoardView() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
-    setDragTaskIdsByColumn(null);
 
     const activeType = active.data.current?.type as "task" | "column" | undefined;
 
@@ -357,20 +362,53 @@ export function BoardView() {
 
     if (activeType !== "task") return;
 
+    const taskId = active.id as TaskId;
+    const fromColumn = findColumnByTaskId(taskId);
+    if (!fromColumn) {
+      clearTaskPreviewNextFrame();
+      return;
+    }
+
+    // Prefer preview-state finalization so drop settles from hover position, not initial drag origin.
+    if (!normalizedQuery && dragTaskIdsByColumn) {
+      const toColumnId = findColumnIdByTaskIdFromPreview(dragTaskIdsByColumn, taskId);
+      if (toColumnId) {
+        const previewTaskIds = dragTaskIdsByColumn[toColumnId];
+        const toIndex = previewTaskIds?.indexOf(taskId) ?? -1;
+        const fromIndex = fromColumn.taskIds.indexOf(taskId);
+
+        if (toIndex !== -1) {
+          const isNoOp = fromColumn.id === toColumnId && fromIndex === toIndex;
+          if (!isNoOp) {
+            moveTask(taskId, fromColumn.id, toColumnId, toIndex);
+          }
+          clearTaskPreviewNextFrame();
+          return;
+        }
+      }
+    }
+
     if (overType === "task") {
-      if (active.id === over.id) return;
-      reorderTask(active.id as TaskId, over.id as TaskId);
+      if (active.id !== over.id) {
+        reorderTask(taskId, over.id as TaskId);
+      }
+      clearTaskPreviewNextFrame();
       return;
     }
 
     if (overType === "column") {
-      const taskId = active.id as TaskId;
-      const fromColumn = findColumnByTaskId(taskId);
       const toColumn = findColumnById(over.id as ColumnId);
-      if (!fromColumn || !toColumn) return;
+      if (!toColumn) {
+        clearTaskPreviewNextFrame();
+        return;
+      }
 
       moveTask(taskId, fromColumn.id, toColumn.id, toColumn.taskIds.length);
+      clearTaskPreviewNextFrame();
+      return;
     }
+
+    clearTaskPreviewNextFrame();
   };
 
   const handleDragCancel = () => {
