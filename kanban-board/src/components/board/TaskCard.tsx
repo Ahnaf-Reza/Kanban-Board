@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { useOptimisticUpdate } from "../../hooks/useOptimisticUpdate";
 import { updateTaskRemote } from "../../lib/taskApi";
@@ -14,14 +14,20 @@ type TaskCardProps = {
   task: Task;
   isDragging?: boolean;
   onDelete?: () => void;
+  onEditingChange?: (isEditing: boolean) => void;
 };
 
 const saveQueue = new AsyncQueue(2);
 
-export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
+export function TaskCard({ task, isDragging, onDelete, onEditingChange }: TaskCardProps) {
   const updateTask = useBoardStore((state) => state.updateTask);
   const [content, setContent] = useState(task.content);
   const [isEditing, setIsEditing] = useState(false);
+
+  const setEditingState = (next: boolean) => {
+    setIsEditing(next);
+    onEditingChange?.(next);
+  };
 
   const { mutate: saveTask, isLoading, error } = useOptimisticUpdate<string, string>(
     async (nextContent) => {
@@ -75,7 +81,7 @@ export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
 
     setContent(trimmed);
     void saveTask(trimmed);
-    setIsEditing(false);
+    setEditingState(false);
   };
 
   return (
@@ -86,7 +92,7 @@ export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
             value={content}
             onChange={handleChange}
             onSubmit={handleSubmit}
-            onBlur={() => setIsEditing(false)}
+            onBlur={() => setEditingState(false)}
             autoFocus
             aria-label="Task content"
             className="w-full resize-none rounded border-0 bg-transparent p-0 text-sm text-slate-800 focus:ring-0 dark:text-slate-100"
@@ -100,6 +106,9 @@ export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
             label="Delete task"
             variant="ghost"
             size="sm"
+            className={isEditing
+              ? "text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-300 dark:hover:bg-red-950/40"
+              : "text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"}
             onClick={(event) => {
               event.stopPropagation();
               onDelete();
@@ -129,14 +138,21 @@ export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
           {statusMessage}
         </p>
         <IconButton
-          label="Edit task"
+          label={isEditing ? "Confirm task edit" : "Edit task"}
           variant="ghost"
           size="sm"
+          className={isEditing
+            ? "text-green-600 hover:bg-green-50 hover:text-green-700 dark:text-green-300 dark:hover:bg-green-950/40"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"}
           onClick={(event) => {
             event.stopPropagation();
-            setIsEditing(true);
+            if (isEditing) {
+              handleSubmit(content);
+              return;
+            }
+            setEditingState(true);
           }}
-          icon={<Pencil className="h-4 w-4" aria-hidden="true" />}
+          icon={isEditing ? <Check className="h-4 w-4" aria-hidden="true" /> : <Pencil className="h-4 w-4" aria-hidden="true" />}
         />
       </div>
     </Card>

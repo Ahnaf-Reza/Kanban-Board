@@ -15,6 +15,7 @@ type ColumnProps = {
   tasks: Task[];
   onAddTask: (content: string) => void;
   onRenameColumn: (title: string) => void;
+  onTitleEditingChange?: (isEditing: boolean) => void;
   onDeleteTask: (taskId: TaskId) => void;
   onDeleteColumn: () => void;
   dragHandleProps?: React.ButtonHTMLAttributes<HTMLButtonElement>;
@@ -25,6 +26,7 @@ export function Column({
   tasks,
   onAddTask,
   onRenameColumn,
+  onTitleEditingChange,
   onDeleteTask,
   onDeleteColumn,
   dragHandleProps,
@@ -40,6 +42,10 @@ export function Column({
   useEffect(() => {
     setTitleDraft(column.title);
   }, [column.title]);
+
+  useEffect(() => {
+    onTitleEditingChange?.(isEditingTitle);
+  }, [isEditingTitle, onTitleEditingChange]);
 
   useEffect(() => {
     for (const task of tasks) {
@@ -121,28 +127,39 @@ export function Column({
               className="h-7 min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 text-sm font-semibold text-slate-700 outline-none ring-0 focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
               aria-label="Column title"
             />
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/40" onClick={saveTitle}>
-              <Check size={14} />
-            </Button>
           </div>
         ) : (
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate min-w-0 flex-1">{column.title}</h2>
         )}
 
         <div className="flex items-center gap-1 shrink-0">
+          {isEditingTitle ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="px-2 text-xs text-green-600 hover:bg-green-50 hover:text-green-700 dark:text-green-300 dark:hover:bg-green-950/40"
+              onClick={saveTitle}
+              aria-label={`Confirm column name ${column.title}`}
+            >
+              <Check size={14} />
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="px-2 text-xs text-slate-600 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              onClick={() => setIsEditingTitle(true)}
+              aria-label={`Edit column ${column.title}`}
+            >
+              <Pencil size={14} />
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"
-            className="px-2 text-xs text-slate-600 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            onClick={() => setIsEditingTitle(true)}
-            aria-label={`Edit column ${column.title}`}
-          >
-            <Pencil size={14} />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-300 dark:hover:bg-red-950/40"
+            className={isEditingTitle
+              ? "px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-300 dark:hover:bg-red-950/40"
+              : "px-2 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"}
             onClick={onDeleteColumn}
           >
             <X size={14} />

@@ -1,5 +1,6 @@
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
+import { useState } from "react";
 import type { Column as BoardColumn, Task, TaskId } from "../../types/board";
 import { Column } from "./Column";
 
@@ -20,8 +21,11 @@ export function SortableColumn({
   onDeleteTask,
   onDeleteColumn,
 }: SortableColumnProps) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: column.id,
+    disabled: isEditingTitle,
     data: {
       type: "column",
       columnId: column.id,
@@ -41,6 +45,7 @@ export function SortableColumn({
         tasks={tasks}
         onAddTask={onAddTask}
         onRenameColumn={onRenameColumn}
+        onTitleEditingChange={setIsEditingTitle}
         onDeleteTask={onDeleteTask}
         onDeleteColumn={onDeleteColumn}
         dragHandleProps={{ ...(attributes as React.ButtonHTMLAttributes<HTMLButtonElement>), ...(listeners ?? {}) }}
