@@ -287,6 +287,10 @@ export function BoardView() {
 
   useEffect(() => {
     updateScrollButtons();
+  }, [columnData]);
+
+  useEffect(() => {
+    updateScrollButtons();
     const handleScroll = () => updateScrollButtons();
     const handleWheel = (e: WheelEvent) => {
       if (e.shiftKey) {
@@ -358,6 +362,9 @@ export function BoardView() {
             </AnimatePresence>
           </div>
         </SortableContext>
+
+        {/* Fade out at the right edge */}
+        <div className="absolute right-8 top-4 bottom-4 w-8 bg-gradient-to-l from-white/30 to-transparent dark:from-slate-800/30 pointer-events-none md:right-12" />
 
         <Button
           variant="ghost"
