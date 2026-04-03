@@ -230,6 +230,24 @@ export const addColumn = mutation({
   },
 });
 
+export const updateColumnTitle = mutation({
+  args: {
+    columnId: v.id("columns"),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const ownerId = await requireCurrentUserId(ctx);
+    const column = await requireOwnedColumn(ctx, args.columnId, ownerId);
+
+    const now = Date.now();
+    await ctx.db.patch(args.columnId, {
+      title: args.title,
+      updatedAt: now,
+    });
+    await ctx.db.patch(column.boardId, { updatedAt: now });
+  },
+});
+
 export const deleteColumn = mutation({
   args: {
     columnId: v.id("columns"),

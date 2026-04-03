@@ -7,6 +7,7 @@ type SortableColumnProps = {
   column: BoardColumn;
   tasks: Task[];
   onAddTask: (content: string) => void;
+  onRenameColumn: (title: string) => void;
   onDeleteTask: (taskId: TaskId) => void;
   onDeleteColumn: () => void;
 };
@@ -15,6 +16,7 @@ export function SortableColumn({
   column,
   tasks,
   onAddTask,
+  onRenameColumn,
   onDeleteTask,
   onDeleteColumn,
 }: SortableColumnProps) {
@@ -38,6 +40,7 @@ export function SortableColumn({
         column={column}
         tasks={tasks}
         onAddTask={onAddTask}
+        onRenameColumn={onRenameColumn}
         onDeleteTask={onDeleteTask}
         onDeleteColumn={onDeleteColumn}
         dragHandleProps={{ ...(attributes as React.ButtonHTMLAttributes<HTMLButtonElement>), ...(listeners ?? {}) }}

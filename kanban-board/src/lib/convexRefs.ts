@@ -7,6 +7,7 @@ export const convexRefs = {
   getBoard: makeFunctionReference<"query">("board:getBoard") as QueryRef,
   bootstrapDefaultBoard: makeFunctionReference<"mutation">("board:bootstrapDefaultBoard") as MutationRef,
   addColumn: makeFunctionReference<"mutation">("board:addColumn") as MutationRef,
+  updateColumnTitle: makeFunctionReference<"mutation">("board:updateColumnTitle") as MutationRef,
   deleteColumn: makeFunctionReference<"mutation">("board:deleteColumn") as MutationRef,
   reorderColumns: makeFunctionReference<"mutation">("board:reorderColumns") as MutationRef,
   addTask: makeFunctionReference<"mutation">("board:addTask") as MutationRef,

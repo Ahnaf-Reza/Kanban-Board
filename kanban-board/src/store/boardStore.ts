@@ -19,6 +19,7 @@ interface BoardStore extends BoardState {
   updateTask: (taskId: TaskId, updates: Partial<Task>) => void;
   deleteTask: (taskId: TaskId, columnId: ColumnId) => void;
   addColumn: (title: string) => void;
+  renameColumn: (columnId: ColumnId, title: string) => void;
   deleteColumn: (columnId: ColumnId) => void;
   reorderColumns: (fromIndex: number, toIndex: number) => void;
   history: BoardState[];
@@ -363,6 +364,45 @@ export const useBoardStore = create<BoardStore>()(
             await syncFromRemote(false);
           } catch (error) {
             const message = toErrorMessage(error, "Failed to add column");
+            set((state) => {
+              state.remoteError = message;
+            });
+            await syncFromRemote(false);
+          }
+        })();
+      },
+
+      renameColumn: (columnId, title) => {
+        const nextTitle = title.trim();
+        if (!nextTitle) {
+          return;
+        }
+
+        const previousTitle = get().columns[columnId]?.title;
+        if (!previousTitle || previousTitle === nextTitle) {
+          return;
+        }
+
+        set((state) => {
+          const column = state.columns[columnId];
+          if (!column) return;
+          column.title = nextTitle;
+        });
+        get().pushToHistory();
+
+        const client = getConvexClient();
+        if (!client) return;
+
+        void (async () => {
+          try {
+            await runWithAuthRetry(async () =>
+              client.mutation(convexRefs.updateColumnTitle, {
+                columnId,
+                title: nextTitle,
+              }),
+            );
+          } catch (error) {
+            const message = toErrorMessage(error, "Failed to rename column");
             set((state) => {
               state.remoteError = message;
             });

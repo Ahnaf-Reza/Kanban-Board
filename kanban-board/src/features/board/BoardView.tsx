@@ -33,6 +33,7 @@ export function BoardView() {
   const addTask = useBoardStore((state) => state.addTask);
   const moveTask = useBoardStore((state) => state.moveTask);
   const deleteTask = useBoardStore((state) => state.deleteTask);
+  const renameColumn = useBoardStore((state) => state.renameColumn);
   const deleteColumn = useBoardStore((state) => state.deleteColumn);
   const reorderColumns = useBoardStore((state) => state.reorderColumns);
 
@@ -203,6 +204,7 @@ export function BoardView() {
                   column={column}
                   tasks={columnTasks}
                   onAddTask={(content) => addTask(column.id, content)}
+                  onRenameColumn={(title) => renameColumn(column.id, title)}
                   onDeleteTask={(taskId) => deleteTask(taskId, column.id)}
                   onDeleteColumn={() => setPendingColumnDelete({ id: column.id, title: column.title })}
                 />

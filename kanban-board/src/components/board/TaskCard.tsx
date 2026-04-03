@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Pencil } from "lucide-react";
 import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { useOptimisticUpdate } from "../../hooks/useOptimisticUpdate";
 import { updateTaskRemote } from "../../lib/taskApi";
@@ -20,6 +21,7 @@ const saveQueue = new AsyncQueue(2);
 export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
   const updateTask = useBoardStore((state) => state.updateTask);
   const [content, setContent] = useState(task.content);
+  const [isEditing, setIsEditing] = useState(false);
 
   const { mutate: saveTask, isLoading, error } = useOptimisticUpdate<string, string>(
     async (nextContent) => {
@@ -49,7 +51,7 @@ export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
     ? "Save failed. Rolled back to previous content."
     : isLoading
       ? "Saving..."
-      : "Saved";
+      : null;
 
   const debouncedSave = useDebouncedCallback((nextContent: string) => {
     const trimmed = nextContent.trim();
@@ -73,18 +75,25 @@ export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
 
     setContent(trimmed);
     void saveTask(trimmed);
+    setIsEditing(false);
   };
 
   return (
     <Card isDragging={isDragging} className="cursor-grab active:cursor-grabbing dark:border-slate-700 dark:bg-slate-900">
       <div className="flex items-start justify-between gap-2">
-        <AutoTextarea
-          value={content}
-          onChange={handleChange}
-          onSubmit={handleSubmit}
-          aria-label="Task content"
-          className="w-full resize-none rounded border-0 bg-transparent p-0 text-sm text-slate-800 focus:ring-0 dark:text-slate-100"
-        />
+        {isEditing ? (
+          <AutoTextarea
+            value={content}
+            onChange={handleChange}
+            onSubmit={handleSubmit}
+            onBlur={() => setIsEditing(false)}
+            autoFocus
+            aria-label="Task content"
+            className="w-full resize-none rounded border-0 bg-transparent p-0 text-sm text-slate-800 focus:ring-0 dark:text-slate-100"
+          />
+        ) : (
+          <p className="w-full whitespace-pre-wrap break-words text-sm text-slate-800 dark:text-slate-100">{content}</p>
+        )}
 
         {onDelete ? (
           <IconButton
@@ -115,12 +124,21 @@ export function TaskCard({ task, isDragging, onDelete }: TaskCardProps) {
         ) : null}
       </div>
 
-      <p
-        className="mt-2 text-xs text-slate-500 dark:text-slate-400"
-        aria-live="polite"
-      >
-        {statusMessage}
-      </p>
+      <div className="mt-2 flex items-center justify-between">
+        <p className="text-xs text-slate-500 dark:text-slate-400" aria-live="polite">
+          {statusMessage}
+        </p>
+        <IconButton
+          label="Edit task"
+          variant="ghost"
+          size="sm"
+          onClick={(event) => {
+            event.stopPropagation();
+            setIsEditing(true);
+          }}
+          icon={<Pencil className="h-4 w-4" aria-hidden="true" />}
+        />
+      </div>
     </Card>
   );
 }
