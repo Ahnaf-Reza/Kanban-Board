@@ -215,28 +215,25 @@ function App() {
               <h1 className="mt-1 text-2xl font-bold tracking-tight">Kanban Workspace</h1>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+            <div className="grid grid-cols-2 gap-2">
               <Button variant="secondary" size="icon" onClick={undo} disabled={historyIndex <= 0} aria-label="Undo">
                 <RotateCcw size={16} />
               </Button>
               <Button variant="secondary" size="icon" onClick={redo} disabled={historyIndex >= historyLength - 1} aria-label="Redo">
                 <RotateCw size={16} />
               </Button>
-              <Button onClick={() => setIsCreateColumnOpen(true)} className="col-span-2 justify-start gap-2 lg:col-span-1">
+              <Button onClick={() => setIsCreateColumnOpen(true)} className="col-span-2 justify-start gap-2">
                 <Plus size={16} />
                 Add Column
-              </Button>
-            </div>
-
-            <div className="mt-auto flex items-center justify-center border-t border-slate-200/80 pt-4 dark:border-slate-700/70">
-              <Button variant="ghost" size="icon" onClick={toggle} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
-                {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </Button>
             </div>
           </aside>
 
           <div className="min-w-0 flex-1 px-4 md:px-6 lg:px-2 xl:px-4">
-            <div className="mb-4 flex justify-end">
+            <div className="mb-4 flex justify-end gap-2">
+              <Button variant="secondary" size="icon" onClick={toggle} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Open account menu">
