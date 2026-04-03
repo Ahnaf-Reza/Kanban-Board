@@ -21,6 +21,7 @@ import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { useBoardStore } from "../../store/boardStore";
 import type { Column as BoardColumn, ColumnId, Task, TaskId } from "../../types/board";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export function BoardView() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -28,6 +29,7 @@ export function BoardView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [pendingColumnDelete, setPendingColumnDelete] = useState<{ id: ColumnId; title: string } | null>(null);
   const seenColumnIdsRef = useRef<Set<string>>(new Set());
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const tasks = useBoardStore((state) => state.tasks);
   const columns = useBoardStore((state) => state.columns);
@@ -261,6 +263,18 @@ export function BoardView() {
     setPendingColumnDelete(null);
   };
 
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -279,30 +293,52 @@ export function BoardView() {
         />
       </div>
 
-      <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
-        <div className="flex gap-4 overflow-x-auto px-2 pb-4 pt-4 md:px-3">
-          <AnimatePresence initial={false}>
-            {columnData.map(({ columnId, column, columnTasks }) => (
-              <motion.div
-                key={columnId}
-                initial={seenColumnIdsRef.current.has(columnId) ? false : { opacity: 0, x: 24 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -24 }}
-                transition={{ duration: 0.2 }}
-              >
-                <SortableColumn
-                  column={column}
-                  tasks={columnTasks}
-                  onAddTask={(content) => addTask(column.id, content)}
-                  onRenameColumn={(title) => renameColumn(column.id, title)}
-                  onDeleteTask={(taskId) => deleteTask(taskId, column.id)}
-                  onDeleteColumn={() => setPendingColumnDelete({ id: column.id, title: column.title })}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      </SortableContext>
+      <div className="relative">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800"
+          onClick={scrollLeft}
+          aria-label="Scroll left"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
+          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden px-2 pb-4 pt-4 md:px-3">
+            <AnimatePresence initial={false}>
+              {columnData.map(({ columnId, column, columnTasks }) => (
+                <motion.div
+                  key={columnId}
+                  initial={seenColumnIdsRef.current.has(columnId) ? false : { opacity: 0, x: 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -24 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <SortableColumn
+                    column={column}
+                    tasks={columnTasks}
+                    onAddTask={(content) => addTask(column.id, content)}
+                    onRenameColumn={(title) => renameColumn(column.id, title)}
+                    onDeleteTask={(taskId) => deleteTask(taskId, column.id)}
+                    onDeleteColumn={() => setPendingColumnDelete({ id: column.id, title: column.title })}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </SortableContext>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800"
+          onClick={scrollRight}
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
 
       <DragOverlay dropAnimation={null}>
         {activeTask ? <TaskCard task={activeTask} isDragging /> : null}
