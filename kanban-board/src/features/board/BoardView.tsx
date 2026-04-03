@@ -28,6 +28,8 @@ export function BoardView() {
   const [activeColumnPreview, setActiveColumnPreview] = useState<{ id: ColumnId; title: string; tasks: Task[] } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [pendingColumnDelete, setPendingColumnDelete] = useState<{ id: ColumnId; title: string } | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const seenColumnIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -275,6 +277,34 @@ export function BoardView() {
     }
   };
 
+  const updateScrollButtons = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  useEffect(() => {
+    updateScrollButtons();
+    const handleScroll = () => updateScrollButtons();
+    const handleWheel = (e: WheelEvent) => {
+      if (e.shiftKey) {
+        e.preventDefault();
+        scrollRef.current?.scrollBy({ left: e.deltaY, behavior: 'smooth' });
+      }
+    };
+    const element = scrollRef.current;
+    if (element) {
+      element.addEventListener('scroll', handleScroll);
+      element.addEventListener('wheel', handleWheel);
+      return () => {
+        element.removeEventListener('scroll', handleScroll);
+        element.removeEventListener('wheel', handleWheel);
+      };
+    }
+  }, []);
+
   return (
     <DndContext
       sensors={sensors}
@@ -297,15 +327,15 @@ export function BoardView() {
         <Button
           variant="ghost"
           size="sm"
-          className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800"
-          onClick={scrollLeft}
+          className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800 ${canScrollLeft ? 'opacity-100' : 'opacity-50'}`}
+          onClick={canScrollLeft ? scrollLeft : undefined}
           aria-label="Scroll left"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
         <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
-          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden px-2 pb-4 pt-4 md:px-3">
+          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden pl-16 pr-16 pb-4 pt-4 md:pl-16 md:pr-16">
             <AnimatePresence initial={false}>
               {columnData.map(({ columnId, column, columnTasks }) => (
                 <motion.div
@@ -332,8 +362,8 @@ export function BoardView() {
         <Button
           variant="ghost"
           size="sm"
-          className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800"
-          onClick={scrollRight}
+          className={`absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800 ${canScrollRight ? 'opacity-100' : 'opacity-50'}`}
+          onClick={canScrollRight ? scrollRight : undefined}
           aria-label="Scroll right"
         >
           <ChevronRight className="h-4 w-4" />
