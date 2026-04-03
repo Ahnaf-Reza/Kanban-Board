@@ -211,7 +211,8 @@ function App() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <aside className="flex w-full flex-col gap-5 rounded-2xl border border-white/40 bg-white/75 p-4 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70 lg:sticky lg:top-6 lg:w-72 lg:shrink-0 lg:border-l-0 lg:ml-4">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Welcome {sessionUser?.name || "User"}!</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-cyan-300">Production Board</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight">Kanban Workspace</h1>
             </div>
 
             <div className="flex gap-1">
@@ -252,6 +253,10 @@ function App() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
+
+            <div className="mb-6 text-center">
+              <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Welcome back, {sessionUser?.name || "User"}!</h2>
             </div>
 
             <header className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
