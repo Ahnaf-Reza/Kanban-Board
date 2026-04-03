@@ -27,8 +27,8 @@ export function SortableColumn({
     id: column.id,
     disabled: isEditingTitle,
     transition: {
-      duration: 220,
-      easing: "cubic-bezier(0.18, 0.89, 0.32, 1.08)",
+      duration: 170,
+      easing: "cubic-bezier(0.2, 0, 0, 1)",
     },
     data: {
       type: "column",
