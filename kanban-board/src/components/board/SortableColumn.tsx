@@ -39,7 +39,7 @@ export function SortableColumn({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? undefined : transition,
-    opacity: 1,
+    opacity: isDragging ? 0 : 1,
     willChange: "transform",
   };
 

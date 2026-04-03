@@ -24,6 +24,7 @@ import type { Column as BoardColumn, ColumnId, Task, TaskId } from "../../types/
 
 export function BoardView() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeColumnPreview, setActiveColumnPreview] = useState<{ id: ColumnId; title: string; tasks: Task[] } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [pendingColumnDelete, setPendingColumnDelete] = useState<{ id: ColumnId; title: string } | null>(null);
   const seenColumnIdsRef = useRef<Set<string>>(new Set());
@@ -158,12 +159,41 @@ export function BoardView() {
     moveTask(activeId, fromColumn.id, overColumn.id, toIndex);
   };
 
+  const buildColumnPreview = (columnId: ColumnId) => {
+    const column = findColumnById(columnId);
+    if (!column) return null;
+
+    const previewTasks = column.taskIds
+      .map((taskId) => tasks[taskId])
+      .filter((task): task is Task => Boolean(task));
+
+    return {
+      id: column.id,
+      title: column.title,
+      tasks: previewTasks,
+    };
+  };
+
+  const clearColumnPreviewNextFrame = () => {
+    window.requestAnimationFrame(() => {
+      setActiveColumnPreview(null);
+    });
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const activeType = event.active.data.current?.type as "task" | "column" | undefined;
-    if (activeType !== "task") return;
 
-    const task = findTaskById(event.active.id as TaskId);
-    setActiveTask(task);
+    if (activeType === "column") {
+      setActiveTask(null);
+      setActiveColumnPreview(buildColumnPreview(event.active.id as ColumnId));
+      return;
+    }
+
+    if (activeType === "task") {
+      const task = findTaskById(event.active.id as TaskId);
+      setActiveTask(task);
+      setActiveColumnPreview(null);
+    }
   };
 
   const handleDragOver = (_event: DragOverEvent) => {
@@ -174,9 +204,15 @@ export function BoardView() {
     const { active, over } = event;
     setActiveTask(null);
 
-    if (!over) return;
-
     const activeType = active.data.current?.type as "task" | "column" | undefined;
+
+    if (!over) {
+      if (activeType === "column") {
+        clearColumnPreviewNextFrame();
+      }
+      return;
+    }
+
     const overType = over.data.current?.type as "task" | "column" | undefined;
 
     if (activeType === "column" && overType === "column") {
@@ -187,6 +223,12 @@ export function BoardView() {
       if (fromIndex === -1 || toIndex === -1) return;
 
       reorderColumns(fromIndex, toIndex);
+      clearColumnPreviewNextFrame();
+      return;
+    }
+
+    if (activeType === "column") {
+      clearColumnPreviewNextFrame();
       return;
     }
 
@@ -210,6 +252,7 @@ export function BoardView() {
 
   const handleDragCancel = () => {
     setActiveTask(null);
+    setActiveColumnPreview(null);
   };
 
   const confirmDeleteColumn = () => {
@@ -261,7 +304,35 @@ export function BoardView() {
         </div>
       </SortableContext>
 
-      <DragOverlay>{activeTask ? <TaskCard task={activeTask} isDragging /> : null}</DragOverlay>
+      <DragOverlay dropAnimation={null}>
+        {activeTask ? <TaskCard task={activeTask} isDragging /> : null}
+
+        {!activeTask && activeColumnPreview ? (
+          <section className="w-72 space-y-3 rounded-xl border border-slate-200/70 bg-slate-100/95 p-3 shadow-2xl backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-800/95">
+            <header className="flex items-center gap-2">
+              <div className="rounded px-1.5 py-0.5 text-xs text-slate-500 dark:text-slate-400">::</div>
+              <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{activeColumnPreview.title}</h2>
+            </header>
+
+            <div className="space-y-2">
+              {activeColumnPreview.tasks.length === 0 ? (
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                  No tasks yet.
+                </div>
+              ) : (
+                activeColumnPreview.tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    {task.content}
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        ) : null}
+      </DragOverlay>
 
       <Modal
         open={pendingColumnDelete !== null}
