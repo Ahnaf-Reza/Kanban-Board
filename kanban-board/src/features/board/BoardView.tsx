@@ -290,6 +290,15 @@ export function BoardView() {
     updateScrollButtons();
   }, [columnData]);
 
+  const edgeFadeSize = 32;
+  const horizontalEdgeMask = canScrollLeft
+    ? canScrollRight
+      ? `linear-gradient(to right, transparent 0, black ${edgeFadeSize}px, black calc(100% - ${edgeFadeSize}px), transparent 100%)`
+      : `linear-gradient(to right, black 0, black calc(100% - ${edgeFadeSize}px), transparent 100%)`
+    : canScrollRight
+      ? `linear-gradient(to right, transparent 0, black ${edgeFadeSize}px, black 100%)`
+      : undefined;
+
   useEffect(() => {
     updateScrollButtons();
     const handleWheel = (e: WheelEvent) => {
@@ -345,7 +354,18 @@ export function BoardView() {
         </Button>
 
         <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
-          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden pl-2 pb-4 pt-4 md:pl-3">
+          <div
+            ref={scrollRef}
+            className="flex gap-4 overflow-x-hidden pl-2 pb-4 pt-4 md:pl-3"
+            style={
+              horizontalEdgeMask
+                ? {
+                    WebkitMaskImage: horizontalEdgeMask,
+                    maskImage: horizontalEdgeMask,
+                  }
+                : undefined
+            }
+          >
             <AnimatePresence initial={false}>
               {columnData.map(({ columnId, column, columnTasks }) => (
                 <motion.div
