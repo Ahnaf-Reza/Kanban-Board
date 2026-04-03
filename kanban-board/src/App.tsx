@@ -255,8 +255,9 @@ function App() {
               </DropdownMenu>
             </div>
 
-            <div className="mb-6 text-center">
-              <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Welcome back, {sessionUser?.name || "User"}!</h2>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-slate-700 dark:text-slate-200">Welcome back</h2>
+              <p className="text-xl font-semibold text-slate-600 dark:text-slate-300">{sessionUser?.name || "User"}!</p>
             </div>
 
             <header className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">

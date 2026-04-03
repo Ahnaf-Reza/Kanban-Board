@@ -19,6 +19,7 @@ interface BoardStore extends BoardState {
   updateTask: (taskId: TaskId, updates: Partial<Task>) => void;
   deleteTask: (taskId: TaskId, columnId: ColumnId) => void;
   addColumn: (title: string) => void;
+  updateColumn: (columnId: ColumnId, title: string) => void;
   deleteColumn: (columnId: ColumnId) => void;
   reorderColumns: (fromIndex: number, toIndex: number) => void;
   history: BoardState[];
@@ -367,6 +368,36 @@ export const useBoardStore = create<BoardStore>()(
               state.remoteError = message;
             });
             await syncFromRemote(false);
+          }
+        })();
+      },
+
+      updateColumn: (columnId, title) => {
+        set((state) => {
+          const column = state.columns[columnId];
+          if (!column) return;
+
+          column.title = title;
+        });
+        get().pushToHistory();
+
+        const client = getConvexClient();
+        if (!client) return;
+
+        void (async () => {
+          try {
+            await runWithAuthRetry(async () =>
+              client.mutation(convexRefs.updateColumn, {
+                columnId,
+                title,
+              }),
+            );
+          } catch (error) {
+            const message = toErrorMessage(error, "Failed to update column");
+            set((state) => {
+              state.remoteError = message;
+            });
+            await syncFromRemote();
           }
         })();
       },

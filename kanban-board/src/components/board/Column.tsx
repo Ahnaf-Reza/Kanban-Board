@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
-import type { Column as BoardColumn, Task } from "../../types/board";
+import { Pencil, X } from "lucide-react";
+import type { Column as BoardColumn, Task, ColumnId } from "../../types/board";
 import { AutoTextarea } from "../ui/AutoTextarea";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
@@ -16,6 +16,7 @@ type ColumnProps = {
   onAddTask: (content: string) => void;
   onDeleteTask: (taskId: TaskId) => void;
   onDeleteColumn: () => void;
+  onEditColumn?: (columnId: ColumnId, newTitle: string) => void;
   dragHandleProps?: React.ButtonHTMLAttributes<HTMLButtonElement>;
 };
 
@@ -25,10 +26,13 @@ export function Column({
   onAddTask,
   onDeleteTask,
   onDeleteColumn,
+  onEditColumn,
   dragHandleProps,
 }: ColumnProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [draft, setDraft] = useState("");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(column.title);
   const previousTaskCountRef = useRef(tasks.length);
   const seenTaskIdsRef = useRef<Set<string>>(new Set(tasks.map((task) => task.id)));
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
@@ -66,6 +70,25 @@ export function Column({
     setIsCreating(false);
   };
 
+  const submitTitleEdit = () => {
+    const newTitle = titleDraft.trim();
+    if (!newTitle || newTitle === column.title) {
+      setIsEditingTitle(false);
+      setTitleDraft(column.title);
+      return;
+    }
+
+    if (onEditColumn) {
+      onEditColumn(column.id, newTitle);
+    }
+    setIsEditingTitle(false);
+  };
+
+  const cancelTitleEdit = () => {
+    setIsEditingTitle(false);
+    setTitleDraft(column.title);
+  };
+
   return (
     <section
       ref={setNodeRef}
@@ -81,9 +104,39 @@ export function Column({
         >
           ::
         </button>
-        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate min-w-0 flex-1">{column.title}</h2>
+        {isEditingTitle ? (
+          <input
+            type="text"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitTitleEdit();
+              } else if (e.key === "Escape") {
+                cancelTitleEdit();
+              }
+            }}
+            onBlur={submitTitleEdit}
+            className="text-sm font-semibold text-slate-700 dark:text-slate-200 bg-transparent border border-slate-300 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500 dark:border-slate-600 dark:focus:border-blue-400 flex-1 min-w-0"
+            autoFocus
+          />
+        ) : (
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate min-w-0 flex-1">{column.title}</h2>
+        )}
         <div className="flex items-center gap-1 shrink-0">
-          <span className="rounded bg-slate-200 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-200">{tasks.length}</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="px-2 text-xs text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700"
+            onClick={() => {
+              setIsEditingTitle(true);
+              setTitleDraft(column.title);
+            }}
+            aria-label="Edit column title"
+          >
+            <Pencil size={14} />
+          </Button>
           <Button
             size="sm"
             variant="ghost"

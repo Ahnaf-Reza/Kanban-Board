@@ -34,6 +34,7 @@ export function BoardView() {
   const moveTask = useBoardStore((state) => state.moveTask);
   const deleteTask = useBoardStore((state) => state.deleteTask);
   const deleteColumn = useBoardStore((state) => state.deleteColumn);
+  const updateColumn = useBoardStore((state) => state.updateColumn);
   const reorderColumns = useBoardStore((state) => state.reorderColumns);
 
   const filteredTasks = useMemo(() => {
@@ -205,6 +206,7 @@ export function BoardView() {
                   onAddTask={(content) => addTask(column.id, content)}
                   onDeleteTask={(taskId) => deleteTask(taskId, column.id)}
                   onDeleteColumn={() => setPendingColumnDelete({ id: column.id, title: column.title })}
+                  onEditColumn={(columnId, newTitle) => updateColumn(columnId, newTitle)}
                 />
               </motion.div>
             ))}
