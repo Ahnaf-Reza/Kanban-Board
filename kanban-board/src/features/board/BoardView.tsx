@@ -4,6 +4,7 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   closestCorners,
   useSensor,
   useSensors,
@@ -105,7 +106,13 @@ export function BoardView() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -404,7 +411,7 @@ export function BoardView() {
         {activeTask ? <TaskCard task={activeTask} isDragging /> : null}
 
         {!activeTask && activeColumnPreview ? (
-          <section className="w-72 space-y-3 rounded-xl border border-slate-200/70 bg-slate-100/95 p-3 shadow-2xl backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-800/95">
+          <section className="w-64 sm:w-72 space-y-2 sm:space-y-3 rounded-xl border border-slate-200/70 bg-slate-100/95 p-2 sm:p-3 shadow-2xl backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-800/95">
             <header className="flex items-center gap-2">
               <div className="rounded px-1.5 py-0.5 text-xs text-slate-500 dark:text-slate-400">::</div>
               <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{activeColumnPreview.title}</h2>

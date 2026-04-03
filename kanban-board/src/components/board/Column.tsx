@@ -95,7 +95,7 @@ export function Column({
   return (
     <section
       ref={setNodeRef}
-      className="w-72 flex-shrink-0 space-y-3 rounded-xl border border-slate-200/70 bg-slate-100/80 p-3 shadow-sm backdrop-blur-sm transition-colors dark:border-slate-700/60 dark:bg-slate-800/70"
+      className="w-64 sm:w-72 flex-shrink-0 space-y-2 sm:space-y-3 rounded-xl border border-slate-200/70 bg-slate-100/80 p-2 sm:p-3 shadow-sm backdrop-blur-sm transition-colors dark:border-slate-700/60 dark:bg-slate-800/70"
     >
       <header className="flex items-center gap-2">
         <button
