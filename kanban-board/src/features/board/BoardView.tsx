@@ -327,7 +327,7 @@ export function BoardView() {
         <Button
           variant="ghost"
           size="sm"
-          className={`absolute -left-5 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800 md:-left-6 ${canScrollLeft ? 'opacity-100' : 'opacity-50'}`}
+          className={`absolute -left-8 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800 md:-left-10 ${canScrollLeft ? 'opacity-100' : 'opacity-50'}`}
           onClick={canScrollLeft ? scrollLeft : undefined}
           aria-label="Scroll left"
         >
@@ -335,7 +335,7 @@ export function BoardView() {
         </Button>
 
         <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
-          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden pl-2 pr-20 pb-4 pt-4 md:pl-3 md:pr-24">
+          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden pl-2 pr-24 pb-4 pt-4 md:pl-3 md:pr-28">
             <AnimatePresence initial={false}>
               {columnData.map(({ columnId, column, columnTasks }) => (
                 <motion.div
