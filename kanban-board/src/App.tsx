@@ -207,9 +207,9 @@ function App() {
 
   return (
     <main className={backgroundClassName}>
-      <section className="mx-auto w-full max-w-7xl px-4 pb-8 pt-6 md:px-8">
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <aside className="flex w-full flex-col gap-5 rounded-2xl border border-white/40 bg-white/75 p-4 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70 lg:w-72 lg:shrink-0">
+      <section className="w-full pb-8 pt-6 lg:pr-4">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <aside className="flex w-full flex-col gap-5 rounded-2xl border border-white/40 bg-white/75 p-4 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70 lg:sticky lg:top-6 lg:w-72 lg:shrink-0 lg:rounded-l-none lg:border-l-0">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-cyan-300">Production Board</p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight">Kanban Workspace</h1>
@@ -235,8 +235,8 @@ function App() {
             </div>
           </aside>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex justify-end mb-4">
+          <div className="min-w-0 flex-1 px-4 md:px-6 lg:px-2 xl:px-4">
+            <div className="mb-4 flex justify-end">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Open account menu">

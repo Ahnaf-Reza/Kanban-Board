@@ -179,7 +179,7 @@ export function BoardView() {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="px-4 pt-4">
+      <div className="px-2 pt-4 md:px-3">
         <Input
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
@@ -189,7 +189,7 @@ export function BoardView() {
       </div>
 
       <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
-        <div className="flex gap-4 overflow-x-auto p-4">
+        <div className="flex gap-4 overflow-x-auto px-2 pb-4 pt-4 md:px-3">
           <AnimatePresence initial={false}>
             {columnData.map(({ columnId, column, columnTasks }) => (
               <motion.div
