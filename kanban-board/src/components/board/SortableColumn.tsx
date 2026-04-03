@@ -26,6 +26,10 @@ export function SortableColumn({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: column.id,
     disabled: isEditingTitle,
+    transition: {
+      duration: 220,
+      easing: "cubic-bezier(0.18, 0.89, 0.32, 1.08)",
+    },
     data: {
       type: "column",
       columnId: column.id,
@@ -34,8 +38,9 @@ export function SortableColumn({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.65 : 1,
+    transition: isDragging ? undefined : transition,
+    opacity: 1,
+    willChange: "transform",
   };
 
   return (
