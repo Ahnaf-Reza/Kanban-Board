@@ -314,7 +314,7 @@ export function BoardView() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="pl-2 pr-10 pt-4 md:pl-3 md:pr-14">
+      <div className="pl-2 pr-12 pt-4 md:pl-3 md:pr-16">
         <Input
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
@@ -327,7 +327,7 @@ export function BoardView() {
         <Button
           variant="ghost"
           size="sm"
-          className={`absolute -left-3 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800 md:-left-4 ${canScrollLeft ? 'opacity-100' : 'opacity-50'}`}
+          className={`absolute -left-5 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-800 md:-left-6 ${canScrollLeft ? 'opacity-100' : 'opacity-50'}`}
           onClick={canScrollLeft ? scrollLeft : undefined}
           aria-label="Scroll left"
         >
@@ -335,7 +335,7 @@ export function BoardView() {
         </Button>
 
         <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
-          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden pl-2 pr-16 pb-4 pt-4 md:pl-3 md:pr-20">
+          <div ref={scrollRef} className="flex gap-4 overflow-x-hidden pl-2 pr-20 pb-4 pt-4 md:pl-3 md:pr-24">
             <AnimatePresence initial={false}>
               {columnData.map(({ columnId, column, columnTasks }) => (
                 <motion.div
