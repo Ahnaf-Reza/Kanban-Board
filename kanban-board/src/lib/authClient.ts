@@ -92,6 +92,28 @@ async function callAuthJson<TResponse>(route: string, init?: RequestInit): Promi
   return (await response.json()) as TResponse;
 }
 
+async function callAuthJsonWithFallback<TResponse>(routes: string[], init?: RequestInit): Promise<TResponse> {
+  let lastError: Error | null = null;
+
+  for (const route of routes) {
+    try {
+      return await callAuthJson<TResponse>(route, init);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Auth request failed.");
+      const message = lastError.message.toLowerCase();
+      if (!message.includes("status 404")) {
+        throw lastError;
+      }
+    }
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
+
+  throw new Error("Auth request failed.");
+}
+
 export async function listLinkedAccounts(): Promise<LinkedAccount[]> {
   const result = await callAuthJson<LinkedAccount[]>("/list-accounts", {
     method: "GET",
@@ -123,7 +145,19 @@ export async function changePassword(currentPassword: string, newPassword: strin
 }
 
 export async function setPassword(newPassword: string): Promise<void> {
-  await callAuthJson<{ status: boolean }>("/set-password", {
+  const maybeClient = authClient as unknown as {
+    setPassword?: (args: { newPassword: string }) => Promise<{ error?: { message?: string } | null }>;
+  };
+
+  if (typeof maybeClient.setPassword === "function") {
+    const result = await maybeClient.setPassword({ newPassword });
+    if (result?.error?.message) {
+      throw new Error(result.error.message);
+    }
+    return;
+  }
+
+  await callAuthJsonWithFallback<{ status: boolean }>(["/set-password", "/setPassword", "/user/set-password"], {
     method: "POST",
     body: JSON.stringify({
       newPassword,

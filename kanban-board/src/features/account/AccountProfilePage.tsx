@@ -231,11 +231,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/40 bg-white/75 px-4 py-3 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-cyan-300">Account</p>
-          <h2 className="text-2xl font-bold tracking-tight">Profile Settings</h2>
-        </div>
+      <div className="flex items-center justify-end gap-3 rounded-2xl border border-white/40 bg-white/75 px-4 py-3 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
         <Button variant="secondary" onClick={onBackToBoard} className="gap-2">
           <ArrowLeft size={16} />
           Back to Board
@@ -243,8 +239,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
       </div>
 
       <Card className="space-y-4 border-white/40 bg-white/75 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
-        <h3 className="text-lg font-semibold">Profile</h3>
-        <div className="flex flex-col items-start gap-3 md:flex-row md:items-center">
+        <div className="flex flex-col items-start gap-3 md:flex-row md:items-start">
           <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
             {previewAvatar ? (
               <img src={previewAvatar} alt="Profile" className="h-full w-full object-cover" />
@@ -252,8 +247,9 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
               <UserCircle2 size={50} className="text-slate-400" />
             )}
           </div>
-          <div className="w-full space-y-2">
+          <div className="w-full">
             <Input
+              label="Upload photo only"
               type="file"
               accept="image/*"
               onChange={(event) => {
