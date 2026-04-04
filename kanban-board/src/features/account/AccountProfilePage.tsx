@@ -7,10 +7,11 @@ import {
   changePassword,
   deleteCurrentUser,
   listLinkedAccounts,
-  requestEmailChange,
   setPassword,
   updateUserProfile,
 } from "../../lib/authClient";
+import { getConvexClient } from "../../lib/convexClient";
+import { convexRefs } from "../../lib/convexRefs";
 
 type SessionUser = {
   name: string;
@@ -20,15 +21,24 @@ type SessionUser = {
 
 type AccountProfilePageProps = {
   sessionUser: SessionUser | null;
+  currentAvatarUrl: string | null;
   onBackToBoard: () => void;
   onRefreshSession: () => Promise<void>;
+  onProfileUpdated: (profile: { name: string; avatarUrl: string | null }) => void;
   onAccountDeleted: () => void;
 };
 
-export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSession, onAccountDeleted }: AccountProfilePageProps) {
+export function AccountProfilePage({
+  sessionUser,
+  currentAvatarUrl,
+  onBackToBoard,
+  onRefreshSession,
+  onProfileUpdated,
+  onAccountDeleted,
+}: AccountProfilePageProps) {
   const [name, setName] = useState(sessionUser?.name || "");
-  const [image, setImage] = useState(sessionUser?.image || "");
-  const [pendingEmail, setPendingEmail] = useState(sessionUser?.email || "");
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(currentAvatarUrl || sessionUser?.image || null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -42,20 +52,20 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
   const [hasGoogleAccount, setHasGoogleAccount] = useState(false);
 
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
-  const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
 
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
-  const [isEmailSubmitting, setIsEmailSubmitting] = useState(false);
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
   const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
 
   useEffect(() => {
     setName(sessionUser?.name || "");
-    setImage(sessionUser?.image || "");
-    setPendingEmail(sessionUser?.email || "");
   }, [sessionUser]);
+
+  useEffect(() => {
+    setAvatarPreviewUrl(currentAvatarUrl || sessionUser?.image || null);
+  }, [currentAvatarUrl, sessionUser?.image]);
 
   useEffect(() => {
     let active = true;
@@ -94,9 +104,8 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
     };
   }, []);
 
-  const previewAvatar = useMemo(() => image.trim() || null, [image]);
+  const previewAvatar = useMemo(() => avatarPreviewUrl, [avatarPreviewUrl]);
   const canSaveProfile = name.trim().length >= 2;
-  const canSubmitEmail = pendingEmail.trim().length > 0 && pendingEmail.trim().toLowerCase() !== (sessionUser?.email || "").toLowerCase();
   const canDelete = deleteConfirmText.trim().toUpperCase() === "DELETE";
   const isSetPasswordMode = !hasCredentialAccount && hasGoogleAccount;
 
@@ -106,13 +115,9 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setImage(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    setSelectedAvatarFile(file);
+    const localPreview = URL.createObjectURL(file);
+    setAvatarPreviewUrl(localPreview);
   };
 
   const handleSaveProfile = async () => {
@@ -127,34 +132,52 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
     try {
       await updateUserProfile({
         name: name.trim(),
-        image: image.trim() || null,
       });
+
+      const convexClient = getConvexClient();
+      if (!convexClient) {
+        throw new Error("Convex client is unavailable.");
+      }
+
+      let avatarStorageId: string | undefined;
+      if (selectedAvatarFile) {
+        const uploadUrl = await convexClient.mutation(convexRefs.generateAvatarUploadUrl, {});
+        const uploadResponse = await fetch(uploadUrl as string, {
+          method: "POST",
+          headers: {
+            "Content-Type": selectedAvatarFile.type || "application/octet-stream",
+          },
+          body: selectedAvatarFile,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload profile image.");
+        }
+
+        const uploadPayload = (await uploadResponse.json()) as { storageId?: string };
+        if (!uploadPayload.storageId) {
+          throw new Error("Profile image upload did not return a storage id.");
+        }
+
+        avatarStorageId = uploadPayload.storageId;
+      }
+
+      const profileResult = await convexClient.mutation(convexRefs.updateCurrentUserProfile, {
+        name: name.trim(),
+        ...(avatarStorageId ? { avatarStorageId } : null),
+      }) as { name?: string; avatarUrl?: string | null };
+
       await onRefreshSession();
+      onProfileUpdated({
+        name: profileResult?.name || name.trim(),
+        avatarUrl: profileResult?.avatarUrl ?? avatarPreviewUrl,
+      });
+      setSelectedAvatarFile(null);
       setProfileStatus("Profile updated.");
     } catch (error) {
       setProfileStatus(error instanceof Error ? error.message : "Profile update failed.");
     } finally {
       setIsProfileSubmitting(false);
-    }
-  };
-
-  const handleChangeEmail = async () => {
-    setEmailStatus(null);
-
-    if (!canSubmitEmail) {
-      setEmailStatus("Enter a new email address.");
-      return;
-    }
-
-    setIsEmailSubmitting(true);
-    try {
-      const resultMessage = await requestEmailChange(pendingEmail.trim());
-      await onRefreshSession();
-      setEmailStatus(resultMessage);
-    } catch (error) {
-      setEmailStatus(error instanceof Error ? error.message : "Email update failed.");
-    } finally {
-      setIsEmailSubmitting(false);
     }
   };
 
@@ -242,13 +265,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
             )}
           </div>
           <div className="w-full space-y-2">
-            <Input
-              label="Profile image URL"
-              value={image}
-              onChange={(event) => setImage(event.target.value)}
-              placeholder="https://example.com/avatar.png"
-            />
-            <Input type="file" accept="image/*" onChange={handleAvatarFilePick} />
+            <Input label="Upload image" type="file" accept="image/*" onChange={handleAvatarFilePick} />
           </div>
         </div>
 
@@ -256,20 +273,6 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
 
         {profileStatus ? <p className="text-sm text-slate-600 dark:text-slate-300">{profileStatus}</p> : null}
         <Button onClick={() => void handleSaveProfile()} isLoading={isProfileSubmitting} disabled={!canSaveProfile}>Save Profile</Button>
-      </Card>
-
-      <Card className="space-y-4 border-white/40 bg-white/75 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
-        <h3 className="text-lg font-semibold">Email</h3>
-        <Input
-          label="Email"
-          type="email"
-          value={pendingEmail}
-          onChange={(event) => setPendingEmail(event.target.value)}
-          placeholder="you@example.com"
-          hint="If verification is required, you will receive a confirmation email."
-        />
-        {emailStatus ? <p className="text-sm text-slate-600 dark:text-slate-300">{emailStatus}</p> : null}
-        <Button onClick={() => void handleChangeEmail()} isLoading={isEmailSubmitting} disabled={!canSubmitEmail}>Update Email</Button>
       </Card>
 
       <Card className="space-y-4 border-white/40 bg-white/75 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">

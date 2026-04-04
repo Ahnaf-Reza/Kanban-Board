@@ -16,4 +16,6 @@ export const convexRefs = {
   moveTask: makeFunctionReference<"mutation">("board:moveTask") as MutationRef,
   getCurrentUser: makeFunctionReference<"query">("users:getCurrentUser") as QueryRef,
   upsertCurrentUser: makeFunctionReference<"mutation">("users:upsertCurrentUser") as MutationRef,
+  generateAvatarUploadUrl: makeFunctionReference<"mutation">("users:generateAvatarUploadUrl") as MutationRef,
+  updateCurrentUserProfile: makeFunctionReference<"mutation">("users:updateCurrentUserProfile") as MutationRef,
 };

@@ -394,6 +394,7 @@ const ALLOWED_FIELDS_BY_MODEL: Record<string, Set<string>> = {
     "emailVerified",
     "image",
     "avatarUrl",
+    "avatarStorageId",
     "tokenIdentifier",
     "subject",
     "issuer",

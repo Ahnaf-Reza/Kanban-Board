@@ -104,20 +104,11 @@ export async function listLinkedAccounts(): Promise<LinkedAccount[]> {
     : [];
 }
 
-export async function updateUserProfile(payload: { name?: string; image?: string | null }): Promise<void> {
+export async function updateUserProfile(payload: { name?: string }): Promise<void> {
   await callAuthJson<{ status: boolean }>("/update-user", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-}
-
-export async function requestEmailChange(newEmail: string): Promise<string> {
-  const result = await callAuthJson<{ status: boolean; message?: string }>("/change-email", {
-    method: "POST",
-    body: JSON.stringify({ newEmail }),
-  });
-
-  return result.message || "Email update requested.";
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
