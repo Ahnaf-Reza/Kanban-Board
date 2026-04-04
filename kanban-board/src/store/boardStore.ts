@@ -243,18 +243,39 @@ export const useBoardStore = create<BoardStore>()(
         },
 
       addTask: (columnId, content) => {
+        const nextContent = content.trim();
+        if (!nextContent) {
+          return;
+        }
+
         const client = getConvexClient();
         if (!client) return;
 
         void (async () => {
           try {
-            await runWithAuthRetry(async () =>
+            const createdTaskId = (await runWithAuthRetry(async () =>
               client.mutation(convexRefs.addTask, {
                 columnId,
-                content,
+                content: nextContent,
               }),
-            );
-            await syncFromRemote(false);
+            )) as string;
+
+            set((state) => {
+              const column = state.columns[columnId];
+              if (!column) return;
+
+              const now = new Date();
+              const taskId = createdTaskId as TaskId;
+
+              state.tasks[taskId] = {
+                id: taskId,
+                content: nextContent,
+                createdAt: now,
+                updatedAt: now,
+              };
+              column.taskIds.push(taskId);
+            });
+            get().pushToHistory();
           } catch (error) {
             const message = toErrorMessage(error, "Failed to add task");
             set((state) => {
@@ -349,19 +370,34 @@ export const useBoardStore = create<BoardStore>()(
       },
 
       addColumn: (title) => {
+        const nextTitle = title.trim();
+        if (!nextTitle) {
+          return;
+        }
+
         const client = getConvexClient();
         const boardId = get().boardId;
         if (!client || !boardId) return;
 
         void (async () => {
           try {
-            await runWithAuthRetry(async () =>
+            const createdColumnId = (await runWithAuthRetry(async () =>
               client.mutation(convexRefs.addColumn, {
                 boardId,
-                title,
+                title: nextTitle,
               }),
-            );
-            await syncFromRemote(false);
+            )) as string;
+
+            set((state) => {
+              const columnId = createdColumnId as ColumnId;
+              state.columns[columnId] = {
+                id: columnId,
+                title: nextTitle,
+                taskIds: [],
+              };
+              state.columnOrder.push(columnId);
+            });
+            get().pushToHistory();
           } catch (error) {
             const message = toErrorMessage(error, "Failed to add column");
             set((state) => {
@@ -415,6 +451,24 @@ export const useBoardStore = create<BoardStore>()(
         const client = getConvexClient();
         if (!client) return;
 
+        const existingColumn = get().columns[columnId];
+        if (!existingColumn) {
+          return;
+        }
+
+        set((state) => {
+          const column = state.columns[columnId];
+          if (!column) return;
+
+          for (const taskId of column.taskIds) {
+            delete state.tasks[taskId];
+          }
+
+          delete state.columns[columnId];
+          state.columnOrder = state.columnOrder.filter((id) => id !== columnId);
+        });
+        get().pushToHistory();
+
         void (async () => {
           try {
             await runWithAuthRetry(async () =>
@@ -422,12 +476,12 @@ export const useBoardStore = create<BoardStore>()(
                 columnId,
               }),
             );
-            await syncFromRemote(false);
           } catch (error) {
             const message = toErrorMessage(error, "Failed to delete column");
             set((state) => {
               state.remoteError = message;
             });
+            await syncFromRemote(false);
           }
         })();
       },
