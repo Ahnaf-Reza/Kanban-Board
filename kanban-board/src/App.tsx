@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LogOut, Moon, Plus, RotateCcw, RotateCw, Sun, User, UserCircle2 } from "lucide-react";
+import { LayoutDashboard, LogOut, Moon, Plus, RotateCcw, RotateCw, Sun, User, UserCircle2 } from "lucide-react";
 import "./App.css";
 import { BoardView } from "./features/board/BoardView";
 import { AuthPanel } from "./features/auth/AuthPanel";
@@ -38,7 +38,6 @@ function App() {
   } = useBetterAuthSession();
 
   const [activeView, setActiveView] = useState<"board" | "profile">("board");
-  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
 
   const [isCreateColumnOpen, setIsCreateColumnOpen] = useState(false);
   const [columnTitle, setColumnTitle] = useState("");
@@ -89,17 +88,8 @@ function App() {
         try {
           await client.mutation(convexRefs.upsertCurrentUser, {
             name: sessionUser.name || undefined,
+            avatarUrl: sessionUser.image || undefined,
           });
-
-          const currentUser = await client.query(convexRefs.getCurrentUser, {});
-          const nextAvatar =
-            currentUser && typeof currentUser === "object"
-              ? ((currentUser as { image?: unknown; avatarUrl?: unknown }).image as string | undefined) ||
-                ((currentUser as { avatarUrl?: unknown }).avatarUrl as string | undefined) ||
-                null
-              : null;
-
-          setProfileAvatarUrl(nextAvatar);
           return;
         } catch {
           // Keep this non-fatal for UX; retry in background.
@@ -114,12 +104,6 @@ function App() {
       cancelled = true;
     };
   }, [isAuthenticated, isTokenReady, sessionUser]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setProfileAvatarUrl(null);
-    }
-  }, [isAuthenticated]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -191,10 +175,7 @@ function App() {
     await signOut();
     resetForSignOut();
     setActiveView("board");
-    setProfileAvatarUrl(null);
   };
-
-  const accountAvatarUrl = profileAvatarUrl || sessionUser?.image || null;
 
   const backgroundClassName =
     "min-h-screen bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.18),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(236,72,153,0.12),transparent_35%),linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)] text-slate-900 transition-colors dark:bg-[radial-gradient(circle_at_15%_15%,rgba(14,116,144,0.35),transparent_42%),radial-gradient(circle_at_85%_0%,rgba(126,34,206,0.2),transparent_35%),linear-gradient(180deg,#020617_0%,#111827_100%)] dark:text-slate-100";
@@ -261,15 +242,7 @@ function App() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Open account menu">
-                    {accountAvatarUrl ? (
-                      <img
-                        src={accountAvatarUrl}
-                        alt="Profile"
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <UserCircle2 size={20} />
-                    )}
+                    <UserCircle2 size={20} />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -282,6 +255,10 @@ function App() {
                   <DropdownMenuItem onSelect={() => setActiveView("profile")} className="gap-2">
                     <User size={16} />
                     Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setActiveView("board")} className="gap-2">
+                    <LayoutDashboard size={16} />
+                    Board
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => void handleSignOut()} className="gap-2 text-red-600 dark:text-red-300">
@@ -322,12 +299,8 @@ function App() {
             ) : (
               <AccountProfilePage
                 sessionUser={sessionUser}
-                currentAvatarUrl={accountAvatarUrl}
                 onBackToBoard={() => setActiveView("board")}
                 onRefreshSession={refreshSession}
-                onProfileUpdated={(profile) => {
-                  setProfileAvatarUrl(profile.avatarUrl);
-                }}
                 onAccountDeleted={() => {
                   resetForSignOut();
                   window.location.reload();

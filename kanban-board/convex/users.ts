@@ -1,6 +1,5 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
 
 function normalizeEmail(email: string | null | undefined): string | undefined {
   if (typeof email !== "string") {
@@ -83,7 +82,7 @@ export const upsertCurrentUser = mutation({
     }
 
     const nextName = args.name ?? identity.name ?? undefined;
-    const nextAvatarUrl = args.avatarUrl ?? existing?.image ?? identity.pictureUrl ?? undefined;
+    const nextAvatarUrl = args.avatarUrl ?? identity.pictureUrl ?? undefined;
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -94,8 +93,6 @@ export const upsertCurrentUser = mutation({
         email: normalizedEmail ?? existing.email ?? "",
         emailVerified: true,
         image: nextAvatarUrl,
-        avatarUrl: nextAvatarUrl,
-        avatarStorageId: existing.avatarStorageId,
         name: nextName ?? existing.name ?? "",
         updatedAt: now,
       });
@@ -110,112 +107,9 @@ export const upsertCurrentUser = mutation({
       email: normalizedEmail ?? "",
       emailVerified: true,
       image: nextAvatarUrl,
-      avatarUrl: nextAvatarUrl,
       name: nextName ?? "",
       createdAt: now,
       updatedAt: now,
     });
-  },
-});
-
-export const generateAvatarUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    return await ctx.storage.generateUploadUrl();
-  },
-});
-
-export const updateCurrentUserProfile = mutation({
-  args: {
-    name: v.string(),
-    avatarStorageId: v.optional(v.id("_storage")),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const now = Date.now();
-    const normalizedEmail = normalizeEmail(identity.email) ?? "";
-
-    let existing = await ctx.db
-      .query("users")
-      .withIndex("by_token_identifier", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-
-    if (!existing && normalizedEmail) {
-      const matches = await ctx.db
-        .query("users")
-        .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
-        .collect();
-
-      if (matches.length > 0) {
-        const sorted = matches.sort((a, b) => b.updatedAt - a.updatedAt);
-        existing = sorted[0];
-
-        for (const duplicate of sorted.slice(1)) {
-          await ctx.db.delete(duplicate._id);
-        }
-      }
-    }
-
-    let nextAvatarUrl = existing?.image ?? identity.pictureUrl ?? undefined;
-    let nextAvatarStorageId = existing?.avatarStorageId as Id<"_storage"> | undefined;
-
-    if (args.avatarStorageId) {
-      const resolvedUrl = await ctx.storage.getUrl(args.avatarStorageId);
-      if (!resolvedUrl) {
-        throw new Error("Uploaded profile image is unavailable.");
-      }
-      nextAvatarUrl = resolvedUrl;
-      nextAvatarStorageId = args.avatarStorageId;
-    }
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        id: identity.subject,
-        tokenIdentifier: identity.tokenIdentifier,
-        subject: identity.subject,
-        issuer: identity.issuer,
-        email: normalizedEmail || existing.email || "",
-        emailVerified: true,
-        name: args.name,
-        image: nextAvatarUrl,
-        avatarUrl: nextAvatarUrl,
-        avatarStorageId: nextAvatarStorageId,
-        updatedAt: now,
-      });
-
-      return {
-        name: args.name,
-        avatarUrl: nextAvatarUrl ?? null,
-      };
-    }
-
-    await ctx.db.insert("users", {
-      id: identity.subject,
-      tokenIdentifier: identity.tokenIdentifier,
-      subject: identity.subject,
-      issuer: identity.issuer,
-      email: normalizedEmail,
-      emailVerified: true,
-      name: args.name,
-      image: nextAvatarUrl,
-      avatarUrl: nextAvatarUrl,
-      avatarStorageId: nextAvatarStorageId,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return {
-      name: args.name,
-      avatarUrl: nextAvatarUrl ?? null,
-    };
   },
 });

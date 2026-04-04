@@ -9,7 +9,6 @@ export default defineSchema({
     emailVerified: v.optional(v.boolean()),
     image: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
-    avatarStorageId: v.optional(v.id("_storage")),
     tokenIdentifier: v.optional(v.string()),
     subject: v.optional(v.string()),
     issuer: v.optional(v.string()),

@@ -125,6 +125,9 @@ export const auth = betterAuth({
 		autoSignIn: true,
 	},
 	user: {
+		changeEmail: {
+			enabled: true,
+		},
 		deleteUser: {
 			enabled: true,
 		},
