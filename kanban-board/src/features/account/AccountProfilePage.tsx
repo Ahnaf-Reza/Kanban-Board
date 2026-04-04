@@ -3,11 +3,12 @@ import { ArrowLeft, Trash2, UserCircle2 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
-import { getConvexClient } from "../../lib/convexClient";
+import { getConvexClient, setConvexAuthToken } from "../../lib/convexClient";
 import { convexRefs } from "../../lib/convexRefs";
 import {
   changePassword,
   deleteCurrentUser,
+  fetchConvexJwtToken,
   listLinkedAccounts,
   sanitizeUserFacingErrorMessage,
   updateUserProfile,
@@ -35,6 +36,15 @@ function toFriendlyStatus(error: unknown, fallback: string): string {
     return sanitizeUserFacingErrorMessage(error.message, fallback);
   }
   return sanitizeUserFacingErrorMessage("", fallback);
+}
+
+function isUnauthorizedConvexError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes("unauthorized") || message.includes("not authenticated") || message.includes("invalid auth");
 }
 
 export function AccountProfilePage({
@@ -110,6 +120,24 @@ export function AccountProfilePage({
   const canSaveProfile = name.trim().length >= 2;
   const canDelete = deleteConfirmText.trim().toUpperCase() === "DELETE";
 
+  const runWithConvexAuthRetry = async <T,>(operation: () => Promise<T>): Promise<T> => {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isUnauthorizedConvexError(error)) {
+        throw error;
+      }
+
+      const token = await fetchConvexJwtToken();
+      if (!token) {
+        throw error;
+      }
+
+      setConvexAuthToken(token);
+      return operation();
+    }
+  };
+
   const handleAvatarFilePick = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setProfileStatus(null);
     const fileInput = event.currentTarget;
@@ -139,12 +167,11 @@ export function AccountProfilePage({
 
     setIsAvatarUploading(true);
     try {
-      const uploadUrl = (await client.mutation(convexRefs.generateAvatarUploadUrl, {})) as string;
+      const uploadUrl = (await runWithConvexAuthRetry(async () =>
+        (await client.mutation(convexRefs.generateAvatarUploadUrl, {})) as string,
+      )) as string;
       const uploadResponse = await fetch(uploadUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        },
         body: file,
       });
 
@@ -157,22 +184,47 @@ export function AccountProfilePage({
         throw new Error("Invalid upload response from Convex storage.");
       }
 
-      const avatarUrl = (await client.mutation(convexRefs.saveCurrentUserAvatar, {
-        storageId: payload.storageId,
-      })) as string;
+      const avatarUrl = (await runWithConvexAuthRetry(async () =>
+        (await client.mutation(convexRefs.saveCurrentUserAvatar, {
+          storageId: payload.storageId,
+        })) as string,
+      )) as string;
 
-      setImage(avatarUrl);
-      onAvatarUpdated(avatarUrl);
+      let bestAvatarUrl = avatarUrl.trim();
+
+      const resolvedAvatarUrl = avatarUrl.trim();
+      if (!resolvedAvatarUrl) {
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          if (attempt > 0) {
+            await new Promise((resolve) => window.setTimeout(resolve, 350));
+          }
+
+          const currentUser = (await runWithConvexAuthRetry(async () =>
+            (await client.query(convexRefs.getCurrentUser, {})) as { image?: unknown } | null,
+          )) as { image?: unknown } | null;
+
+          const delayedAvatarUrl = typeof currentUser?.image === "string" ? currentUser.image.trim() : "";
+          if (delayedAvatarUrl) {
+            bestAvatarUrl = delayedAvatarUrl;
+            break;
+          }
+        }
+      }
+
+      if (bestAvatarUrl) {
+        setImage(bestAvatarUrl);
+        onAvatarUpdated(bestAvatarUrl);
+      }
 
       // Convex is the source of truth for stored avatars; Better Auth profile sync is best-effort.
       try {
-        await updateUserProfile({ image: avatarUrl });
+        await updateUserProfile({ image: bestAvatarUrl || null });
         await onRefreshSession();
       } catch {
         // Ignore non-fatal profile mirror failures.
       }
 
-      setProfileStatus("Profile image updated.");
+      setProfileStatus(bestAvatarUrl ? "Profile image updated." : "Image uploaded. It should appear shortly.");
     } catch (error) {
       setProfileStatus(toFriendlyStatus(error, "Image upload failed. Please try again."));
     } finally {

@@ -161,9 +161,6 @@ export const saveCurrentUserAvatar = mutation({
 
     const now = Date.now();
     const fileUrl = await ctx.storage.getUrl(args.storageId);
-    if (!fileUrl) {
-      throw new Error("Uploaded avatar could not be resolved.");
-    }
 
     const normalizedEmail = normalizeEmail(identity.email);
     let existing = await ctx.db
@@ -184,12 +181,12 @@ export const saveCurrentUserAvatar = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        image: fileUrl,
-        avatarUrl: fileUrl,
+        image: fileUrl ?? existing.image,
+        avatarUrl: fileUrl ?? existing.avatarUrl,
         avatarStorageId: args.storageId,
         updatedAt: now,
       });
-      return fileUrl;
+      return fileUrl ?? "";
     }
 
     await ctx.db.insert("users", {
@@ -199,14 +196,14 @@ export const saveCurrentUserAvatar = mutation({
       issuer: identity.issuer,
       email: normalizedEmail ?? "",
       emailVerified: true,
-      image: fileUrl,
-      avatarUrl: fileUrl,
+      image: fileUrl ?? undefined,
+      avatarUrl: fileUrl ?? undefined,
       avatarStorageId: args.storageId,
       name: identity.name ?? "",
       createdAt: now,
       updatedAt: now,
     });
 
-    return fileUrl;
+    return fileUrl ?? "";
   },
 });
