@@ -111,15 +111,6 @@ export async function updateUserProfile(payload: { name?: string; image?: string
   });
 }
 
-export async function requestEmailChange(newEmail: string): Promise<string> {
-  const result = await callAuthJson<{ status: boolean; message?: string }>("/change-email", {
-    method: "POST",
-    body: JSON.stringify({ newEmail }),
-  });
-
-  return result.message || "Email update requested.";
-}
-
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   await callAuthJson<{ user: unknown }>("/change-password", {
     method: "POST",

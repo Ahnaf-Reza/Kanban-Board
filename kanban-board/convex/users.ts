@@ -113,3 +113,75 @@ export const upsertCurrentUser = mutation({
     });
   },
 });
+
+export const generateAvatarUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const saveCurrentUserAvatar = mutation({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const now = Date.now();
+    const fileUrl = await ctx.storage.getUrl(args.storageId);
+    if (!fileUrl) {
+      throw new Error("Uploaded avatar could not be resolved.");
+    }
+
+    const normalizedEmail = normalizeEmail(identity.email);
+    let existing = await ctx.db
+      .query("users")
+      .withIndex("by_token_identifier", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+
+    if (!existing && normalizedEmail) {
+      const matches = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+        .collect();
+
+      if (matches.length > 0) {
+        existing = matches.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      }
+    }
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        image: fileUrl,
+        avatarUrl: fileUrl,
+        updatedAt: now,
+      });
+      return fileUrl;
+    }
+
+    await ctx.db.insert("users", {
+      id: identity.subject,
+      tokenIdentifier: identity.tokenIdentifier,
+      subject: identity.subject,
+      issuer: identity.issuer,
+      email: normalizedEmail ?? "",
+      emailVerified: true,
+      image: fileUrl,
+      avatarUrl: fileUrl,
+      name: identity.name ?? "",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return fileUrl;
+  },
+});

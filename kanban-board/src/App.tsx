@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LayoutDashboard, LogOut, Moon, Plus, RotateCcw, RotateCw, Sun, User, UserCircle2 } from "lucide-react";
+import { LogOut, Moon, Plus, RotateCcw, RotateCw, Sun, User, UserCircle2 } from "lucide-react";
 import "./App.css";
 import { BoardView } from "./features/board/BoardView";
 import { AuthPanel } from "./features/auth/AuthPanel";
@@ -180,12 +180,33 @@ function App() {
   const backgroundClassName =
     "min-h-screen bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.18),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(236,72,153,0.12),transparent_35%),linear-gradient(180deg,#f8fafc_0%,#e2e8f0_100%)] text-slate-900 transition-colors dark:bg-[radial-gradient(circle_at_15%_15%,rgba(14,116,144,0.35),transparent_42%),radial-gradient(circle_at_85%_0%,rgba(126,34,206,0.2),transparent_35%),linear-gradient(180deg,#020617_0%,#111827_100%)] dark:text-slate-100";
 
-  if (isAuthLoading || (isAuthenticated && !isTokenReady)) {
+  if (isAuthLoading || (isAuthenticated && !isTokenReady && !authError)) {
     return (
       <main className={`${backgroundClassName} flex items-center justify-center`}>
         <p className="rounded-xl border border-white/40 bg-white/75 px-5 py-3 text-sm font-medium shadow-lg backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/75">
           Establishing secure session...
         </p>
+      </main>
+    );
+  }
+
+  if (isAuthenticated && !isTokenReady && authError) {
+    return (
+      <main className={`${backgroundClassName} flex items-center justify-center px-4`}>
+        <div className="w-full max-w-md rounded-2xl border border-rose-300/60 bg-white/85 p-5 shadow-xl backdrop-blur-md dark:border-rose-500/40 dark:bg-slate-900/85">
+          <p className="text-sm font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">Session Error</p>
+          <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">
+            {authError}
+          </p>
+          <div className="mt-4 flex gap-2">
+            <Button variant="secondary" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+            <Button variant="danger" onClick={() => void handleSignOut()}>
+              Sign Out
+            </Button>
+          </div>
+        </div>
       </main>
     );
   }
@@ -242,7 +263,15 @@ function App() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Open account menu">
-                    <UserCircle2 size={20} />
+                    {sessionUser?.image ? (
+                      <img
+                        src={sessionUser.image}
+                        alt="Profile"
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <UserCircle2 size={20} />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -255,10 +284,6 @@ function App() {
                   <DropdownMenuItem onSelect={() => setActiveView("profile")} className="gap-2">
                     <User size={16} />
                     Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setActiveView("board")} className="gap-2">
-                    <LayoutDashboard size={16} />
-                    Board
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => void handleSignOut()} className="gap-2 text-red-600 dark:text-red-300">
