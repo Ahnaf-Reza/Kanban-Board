@@ -24,6 +24,7 @@ function resolveBetterAuthBaseUrl(): string {
 }
 
 const betterAuthBaseUrl = resolveBetterAuthBaseUrl();
+const TOKEN_REQUEST_TIMEOUT_MS = 10000;
 
 function toTokenEndpoint(baseUrl: string): string {
   const normalized = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
@@ -142,13 +143,29 @@ export async function fetchConvexJwtToken(): Promise<string | null> {
     throw new Error("VITE_BETTER_AUTH_URL is missing. Add it to .env.local.");
   }
 
-  const response = await fetch(toTokenEndpoint(betterAuthBaseUrl), {
-    method: "GET",
-    credentials: "include",
-    headers: {
-      Accept: "application/json",
-    },
-  });
+  const abortController = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    abortController.abort();
+  }, TOKEN_REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(toTokenEndpoint(betterAuthBaseUrl), {
+      method: "GET",
+      credentials: "include",
+      signal: abortController.signal,
+      headers: {
+        Accept: "application/json",
+      },
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Fetching auth token timed out. Check Better Auth endpoint and environment variables.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     return null;
