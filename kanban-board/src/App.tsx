@@ -281,11 +281,15 @@ function App() {
                     <p className="text-xs text-slate-500 dark:text-slate-400">{sessionUser?.email || "No email"}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setActiveView("profile")} className="gap-2">
-                    <User size={16} />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  {activeView !== "profile" ? (
+                    <>
+                      <DropdownMenuItem onSelect={() => setActiveView("profile")} className="gap-2">
+                        <User size={16} />
+                        Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  ) : null}
                   <DropdownMenuItem onSelect={() => void handleSignOut()} className="gap-2 text-red-600 dark:text-red-300">
                     <LogOut size={16} />
                     Sign Out

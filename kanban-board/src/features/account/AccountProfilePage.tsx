@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Trash2, UserCircle2 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
@@ -27,6 +27,7 @@ type AccountProfilePageProps = {
 };
 
 export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSession, onAccountDeleted }: AccountProfilePageProps) {
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [name, setName] = useState(sessionUser?.name || "");
   const [image, setImage] = useState(sessionUser?.image || "");
 
@@ -231,7 +232,11 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-end gap-3 rounded-2xl border border-white/40 bg-white/75 px-4 py-3 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/40 bg-white/75 px-4 py-3 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-cyan-300">Account</p>
+          <h2 className="text-2xl font-bold tracking-tight">Profile Settings</h2>
+        </div>
         <Button variant="secondary" onClick={onBackToBoard} className="gap-2">
           <ArrowLeft size={16} />
           Back to Board
@@ -239,6 +244,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
       </div>
 
       <Card className="space-y-4 border-white/40 bg-white/75 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
+        <h3 className="text-lg font-semibold">Profile</h3>
         <div className="flex flex-col items-start gap-3 md:flex-row md:items-start">
           <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
             {previewAvatar ? (
@@ -248,14 +254,22 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
             )}
           </div>
           <div className="w-full">
-            <Input
-              label="Upload photo only"
+            <input
+              ref={avatarInputRef}
+              className="hidden"
               type="file"
               accept="image/*"
               onChange={(event) => {
                 void handleAvatarFilePick(event);
               }}
             />
+            <button
+              type="button"
+              className="flex h-10 w-full items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              Upload photo
+            </button>
             {isAvatarUploading ? <p className="text-sm text-slate-500 dark:text-slate-400">Uploading image...</p> : null}
           </div>
         </div>
@@ -289,7 +303,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
         ) : null}
 
         <Input
-          label={isSetPasswordMode ? "New password" : "New password"}
+          label="New password"
           type="password"
           value={newPassword}
           onChange={(event) => setNewPassword(event.target.value)}
