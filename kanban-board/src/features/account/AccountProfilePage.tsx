@@ -307,12 +307,13 @@ export function AccountProfilePage({
           </div>
           <div className="min-w-0 flex-1">
             {isAvatarLinkEditorOpen ? (
-              <div className="flex items-end gap-2">
-                <Input
-                  label="Profile image link"
+              <div className="flex items-center gap-2">
+                <input
+                  type="url"
                   value={avatarLinkDraft}
                   onChange={(event) => setAvatarLinkDraft(event.target.value)}
                   placeholder="https://example.com/avatar.jpg"
+                  className="h-8 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -322,7 +323,7 @@ export function AccountProfilePage({
                 />
                 <button
                   type="button"
-                  className="mb-[1px] flex h-10 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  className="flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   onClick={() => void handleAvatarLinkSave(avatarLinkDraft)}
                   disabled={isAvatarUpdating}
                 >

@@ -66,7 +66,7 @@ function App() {
 
     return {
       ...sessionUser,
-      image: sessionUser.image || convexAvatarUrl,
+      image: convexAvatarUrl || sessionUser.image,
     };
   }, [convexAvatarUrl, sessionUser]);
 
@@ -100,7 +100,7 @@ function App() {
         try {
           await client.mutation(convexRefs.upsertCurrentUser, {
             name: sessionUser.name || undefined,
-            avatarUrl: (sessionUser.image || convexAvatarUrl) || undefined,
+            avatarUrl: (convexAvatarUrl || sessionUser.image) || undefined,
           });
           return;
         } catch {
