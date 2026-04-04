@@ -30,7 +30,6 @@ function App() {
     isTokenReady,
     authError,
     sessionUser,
-    refreshSession,
     signInWithEmail,
     signUpWithEmail,
     signInWithOAuth,
@@ -387,7 +386,6 @@ function App() {
               <AccountProfilePage
                 sessionUser={resolvedSessionUser}
                 onBackToBoard={() => setActiveView("board")}
-                onRefreshSession={refreshSession}
                 onAvatarUpdated={(avatarUrl: string) => setConvexAvatarUrl(avatarUrl)}
                 onAccountDeleted={() => {
                   resetForSignOut();

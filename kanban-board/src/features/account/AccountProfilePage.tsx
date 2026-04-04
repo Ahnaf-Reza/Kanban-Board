@@ -23,7 +23,6 @@ type SessionUser = {
 type AccountProfilePageProps = {
   sessionUser: SessionUser | null;
   onBackToBoard: () => void;
-  onRefreshSession: () => Promise<void>;
   onAccountDeleted: () => void;
   onAvatarUpdated: (avatarUrl: string) => void;
 };
@@ -64,7 +63,6 @@ function isUnauthorizedConvexError(error: unknown): boolean {
 export function AccountProfilePage({
   sessionUser,
   onBackToBoard,
-  onRefreshSession,
   onAccountDeleted,
   onAvatarUpdated,
 }: AccountProfilePageProps) {
@@ -187,7 +185,6 @@ export function AccountProfilePage({
 
       try {
         await updateUserProfile({ image: bestAvatarUrl || null });
-        await onRefreshSession();
       } catch {
         // Ignore non-fatal profile mirror failures.
       }
@@ -213,7 +210,6 @@ export function AccountProfilePage({
       await updateUserProfile({
         name: name.trim(),
       });
-      await onRefreshSession();
       setProfileStatus("Profile updated.");
     } catch (error) {
       setProfileStatus(toFriendlyStatus(error, "Profile update failed. Please try again."));
