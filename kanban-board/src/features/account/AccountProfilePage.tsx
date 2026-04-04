@@ -9,7 +9,6 @@ import {
   changePassword,
   deleteCurrentUser,
   listLinkedAccounts,
-  setPassword,
   updateUserProfile,
 } from "../../lib/authClient";
 
@@ -27,7 +26,6 @@ type AccountProfilePageProps = {
 };
 
 export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSession, onAccountDeleted }: AccountProfilePageProps) {
-  const allowPasswordSetupForSocialAccounts = (import.meta.env.VITE_ENABLE_SOCIAL_PASSWORD_SETUP as string | undefined) !== "false";
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [name, setName] = useState(sessionUser?.name || "");
   const [image, setImage] = useState(sessionUser?.image || "");
@@ -41,7 +39,6 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
 
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [hasCredentialAccount, setHasCredentialAccount] = useState(true);
-  const [hasGoogleAccount, setHasGoogleAccount] = useState(false);
 
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
   const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
@@ -69,10 +66,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
         }
 
         const hasCredential = accounts.some((account) => account.providerId === "credential");
-        const hasGoogle = accounts.some((account) => account.providerId === "google");
-
         setHasCredentialAccount(hasCredential);
-        setHasGoogleAccount(hasGoogle);
       } catch {
         if (!active) {
           return;
@@ -97,7 +91,6 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
   const previewAvatar = useMemo(() => image.trim() || null, [image]);
   const canSaveProfile = name.trim().length >= 2;
   const canDelete = deleteConfirmText.trim().toUpperCase() === "DELETE";
-  const isSetPasswordMode = allowPasswordSetupForSocialAccounts && !hasCredentialAccount && hasGoogleAccount;
 
   const handleAvatarFilePick = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setProfileStatus(null);
@@ -174,6 +167,11 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
   const handlePasswordSubmit = async () => {
     setPasswordStatus(null);
 
+    if (!hasCredentialAccount) {
+      setPasswordStatus("Password management is unavailable for Google-only accounts.");
+      return;
+    }
+
     if (!newPassword.trim() || !confirmPassword.trim()) {
       setPasswordStatus("Enter and confirm your new password.");
       return;
@@ -184,36 +182,19 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
       return;
     }
 
-    if (!isSetPasswordMode && !currentPassword.trim()) {
+    if (!currentPassword.trim()) {
       setPasswordStatus("Current password is required.");
       return;
     }
 
     setIsPasswordSubmitting(true);
     try {
-      if (isSetPasswordMode) {
-        await setPassword(newPassword);
-      } else {
-        await changePassword(currentPassword, newPassword);
-      }
-
-      try {
-        const accounts = await listLinkedAccounts();
-        const hasCredential = accounts.some((account) => account.providerId === "credential");
-        const hasGoogle = accounts.some((account) => account.providerId === "google");
-        setHasCredentialAccount(hasCredential);
-        setHasGoogleAccount(hasGoogle);
-      } catch {
-        // If account refresh fails, keep the success state from the password operation.
-        if (isSetPasswordMode) {
-          setHasCredentialAccount(true);
-        }
-      }
+      await changePassword(currentPassword, newPassword);
 
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setPasswordStatus(isSetPasswordMode ? "Password set successfully." : "Password updated successfully.");
+      setPasswordStatus("Password updated successfully.");
     } catch (error) {
       setPasswordStatus(error instanceof Error ? error.message : "Password update failed.");
     } finally {
@@ -299,14 +280,14 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
           <h3 className="text-lg font-semibold">Password</h3>
           {isLoadingAccounts ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">Checking account providers...</p>
-          ) : isSetPasswordMode ? (
+          ) : !hasCredentialAccount ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              You signed in with Google. Set a password to enable email/password sign in.
+              Password management is disabled for Google-only accounts.
             </p>
           ) : null}
         </div>
 
-        {!isSetPasswordMode ? (
+        {hasCredentialAccount ? (
           <Input
             label="Current password"
             type="password"
@@ -316,25 +297,33 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
           />
         ) : null}
 
-        <Input
-          label="New password"
-          type="password"
-          value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-          autoComplete="new-password"
-        />
-        <Input
-          label="Confirm new password"
-          type="password"
-          value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
-          autoComplete="new-password"
-        />
+        {hasCredentialAccount ? (
+          <Input
+            label="New password"
+            type="password"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            autoComplete="new-password"
+          />
+        ) : null}
+
+        {hasCredentialAccount ? (
+          <Input
+            label="Confirm new password"
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            autoComplete="new-password"
+          />
+        ) : null}
 
         {passwordStatus ? <p className="text-sm text-slate-600 dark:text-slate-300">{passwordStatus}</p> : null}
-        <Button onClick={() => void handlePasswordSubmit()} isLoading={isPasswordSubmitting}>
-          {isSetPasswordMode ? "Set Password" : "Update Password"}
-        </Button>
+
+        {hasCredentialAccount ? (
+          <Button onClick={() => void handlePasswordSubmit()} isLoading={isPasswordSubmitting}>
+            Update Password
+          </Button>
+        ) : null}
       </Card>
 
       <Card className="space-y-4 border-red-300/70 bg-red-50/80 shadow-xl backdrop-blur-md dark:border-red-500/40 dark:bg-red-950/30">
