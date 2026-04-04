@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LogOut, Moon, Plus, RotateCcw, RotateCw, Sun, UserCircle2 } from "lucide-react";
+import { LayoutDashboard, LogOut, Moon, Plus, RotateCcw, RotateCw, Sun, User, UserCircle2 } from "lucide-react";
 import "./App.css";
 import { BoardView } from "./features/board/BoardView";
 import { AuthPanel } from "./features/auth/AuthPanel";
+import { AccountProfilePage } from "./features/account/AccountProfilePage";
 import { Button } from "./components/ui/Button";
 import { Input } from "./components/ui/Input";
 import { Modal } from "./components/ui/Modal";
@@ -29,11 +30,14 @@ function App() {
     isTokenReady,
     authError,
     sessionUser,
+    refreshSession,
     signInWithEmail,
     signUpWithEmail,
     signInWithOAuth,
     signOut,
   } = useBetterAuthSession();
+
+  const [activeView, setActiveView] = useState<"board" | "profile">("board");
 
   const [isCreateColumnOpen, setIsCreateColumnOpen] = useState(false);
   const [columnTitle, setColumnTitle] = useState("");
@@ -170,6 +174,7 @@ function App() {
   const handleSignOut = async () => {
     await signOut();
     resetForSignOut();
+    setActiveView("board");
   };
 
   const backgroundClassName =
@@ -247,6 +252,15 @@ function App() {
                     <p className="text-xs text-slate-500 dark:text-slate-400">{sessionUser?.email || "No email"}</p>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setActiveView("profile")} className="gap-2">
+                    <User size={16} />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setActiveView("board")} className="gap-2">
+                    <LayoutDashboard size={16} />
+                    Board
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => void handleSignOut()} className="gap-2 text-red-600 dark:text-red-300">
                     <LogOut size={16} />
                     Sign Out
@@ -255,30 +269,44 @@ function App() {
               </DropdownMenu>
             </div>
 
-            <header className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
-              <div className="mb-5 text-left">
-                <p className="text-base font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Welcome back,</p>
-                <h2 className="text-3xl font-bold leading-tight text-slate-800 dark:text-slate-100 md:text-4xl">
-                  {sessionUser?.name || "User"}
-                </h2>
-              </div>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
-                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Tasks</p>
-                  <p className="text-xl font-semibold">{taskCount}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
-                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Columns</p>
-                  <p className="text-xl font-semibold">{columnCount}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
-                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">History</p>
-                  <p className="text-xl font-semibold">{historyIndex + 1}</p>
-                </div>
-              </div>
-            </header>
+            {activeView === "board" ? (
+              <>
+                <header className="rounded-2xl border border-white/40 bg-white/75 p-5 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
+                  <div className="mb-5 text-left">
+                    <p className="text-base font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Welcome back,</p>
+                    <h2 className="text-3xl font-bold leading-tight text-slate-800 dark:text-slate-100 md:text-4xl">
+                      {sessionUser?.name || "User"}
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                    <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Tasks</p>
+                      <p className="text-xl font-semibold">{taskCount}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Columns</p>
+                      <p className="text-xl font-semibold">{columnCount}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">History</p>
+                      <p className="text-xl font-semibold">{historyIndex + 1}</p>
+                    </div>
+                  </div>
+                </header>
 
-            <BoardView />
+                <BoardView />
+              </>
+            ) : (
+              <AccountProfilePage
+                sessionUser={sessionUser}
+                onBackToBoard={() => setActiveView("board")}
+                onRefreshSession={refreshSession}
+                onAccountDeleted={() => {
+                  resetForSignOut();
+                  window.location.reload();
+                }}
+              />
+            )}
           </div>
         </div>
       </section>

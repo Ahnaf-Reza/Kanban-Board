@@ -124,6 +124,14 @@ export const auth = betterAuth({
 		enabled: true,
 		autoSignIn: true,
 	},
+	user: {
+		changeEmail: {
+			enabled: true,
+		},
+		deleteUser: {
+			enabled: true,
+		},
+	},
 	socialProviders: hasGoogleOAuth
 		? {
 			google: {

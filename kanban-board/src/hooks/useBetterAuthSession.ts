@@ -233,6 +233,7 @@ export function useBetterAuthSession() {
     isTokenReady,
     authError,
     sessionUser,
+    refreshSession: sessionState.refetch,
     signInWithEmail,
     signUpWithEmail,
     signInWithOAuth,

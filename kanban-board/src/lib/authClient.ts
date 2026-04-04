@@ -45,6 +45,107 @@ export const authClient = createAuthClient({
   },
 });
 
+type BetterAuthErrorPayload = {
+  message?: string;
+  error?: string;
+  code?: string;
+};
+
+type LinkedAccount = {
+  providerId: string;
+  accountId: string;
+};
+
+function toRouteUrl(route: string): string {
+  const normalizedBase = betterAuthBaseUrl.endsWith("/") ? betterAuthBaseUrl.slice(0, -1) : betterAuthBaseUrl;
+  const normalizedRoute = route.startsWith("/") ? route : `/${route}`;
+  return `${normalizedBase}${normalizedRoute}`;
+}
+
+async function parseErrorPayload(response: Response): Promise<BetterAuthErrorPayload | null> {
+  try {
+    const payload = (await response.json()) as BetterAuthErrorPayload;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+async function callAuthJson<TResponse>(route: string, init?: RequestInit): Promise<TResponse> {
+  const response = await fetch(toRouteUrl(route), {
+    credentials: "include",
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.body ? { "Content-Type": "application/json" } : null),
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    const errorPayload = await parseErrorPayload(response);
+    const fallback = `Request to ${route} failed with status ${response.status}.`;
+    throw new Error(errorPayload?.message || errorPayload?.error || fallback);
+  }
+
+  return (await response.json()) as TResponse;
+}
+
+export async function listLinkedAccounts(): Promise<LinkedAccount[]> {
+  const result = await callAuthJson<LinkedAccount[]>("/list-accounts", {
+    method: "GET",
+  });
+
+  return Array.isArray(result)
+    ? result.map((item) => ({
+        providerId: typeof item.providerId === "string" ? item.providerId : "",
+        accountId: typeof item.accountId === "string" ? item.accountId : "",
+      }))
+    : [];
+}
+
+export async function updateUserProfile(payload: { name?: string; image?: string | null }): Promise<void> {
+  await callAuthJson<{ status: boolean }>("/update-user", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function requestEmailChange(newEmail: string): Promise<string> {
+  const result = await callAuthJson<{ status: boolean; message?: string }>("/change-email", {
+    method: "POST",
+    body: JSON.stringify({ newEmail }),
+  });
+
+  return result.message || "Email update requested.";
+}
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  await callAuthJson<{ user: unknown }>("/change-password", {
+    method: "POST",
+    body: JSON.stringify({
+      currentPassword,
+      newPassword,
+    }),
+  });
+}
+
+export async function setPassword(newPassword: string): Promise<void> {
+  await callAuthJson<{ status: boolean }>("/set-password", {
+    method: "POST",
+    body: JSON.stringify({
+      newPassword,
+    }),
+  });
+}
+
+export async function deleteCurrentUser(password?: string): Promise<void> {
+  await callAuthJson<{ success: boolean; message: string }>("/delete-user", {
+    method: "POST",
+    body: JSON.stringify(password ? { password } : {}),
+  });
+}
+
 export async function fetchConvexJwtToken(): Promise<string | null> {
   if (!betterAuthBaseUrl) {
     throw new Error("VITE_BETTER_AUTH_URL is missing. Add it to .env.local.");
