@@ -1,3 +1,15 @@
 #root {
   min-height: 100%;
 }
+
+@media (hover: hover) and (pointer: fine) {
+  .board-horizontal-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .board-horizontal-scroll::-webkit-scrollbar {
+    display: none;
+    height: 0;
+  }
+}

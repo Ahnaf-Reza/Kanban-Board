@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Pencil } from "lucide-react";
 import { useDebouncedCallback } from "../../hooks/useDebounce";
 import { useOptimisticUpdate } from "../../hooks/useOptimisticUpdate";
@@ -23,6 +23,12 @@ export function TaskCard({ task, isDragging, onDelete, onEditingChange }: TaskCa
   const updateTask = useBoardStore((state) => state.updateTask);
   const [content, setContent] = useState(task.content);
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setContent(task.content);
+    }
+  }, [isEditing, task.content]);
 
   const setEditingState = (next: boolean) => {
     setIsEditing(next);

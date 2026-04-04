@@ -513,7 +513,7 @@ export function BoardView() {
         <SortableContext items={columnData.map((item) => item.columnId)} strategy={horizontalListSortingStrategy}>
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto pl-2 pb-4 pt-4 md:pl-3"
+            className="board-horizontal-scroll flex gap-4 overflow-x-auto pl-2 pb-4 pt-4 md:pl-3"
             style={
               horizontalEdgeMask
                 ? {
