@@ -91,13 +91,47 @@ export function convexAdapter(convexClient) {
         }
       },
 
-      async findOne({ model, where, select }) {
+      async findOne({ model, where, select, join }) {
         try {
-          return await convexClient.query(api.authDb.findOne, {
+          const row = await convexClient.query(api.authDb.findOne, {
             model,
             where: sanitizeWhere(where),
             select,
           });
+
+          if (!row) {
+            return row;
+          }
+
+          const normalizedModel = typeof model === "string" ? model.toLowerCase() : "";
+          const shouldJoinAccounts = Boolean(join && typeof join === "object" && join.account);
+
+          if ((normalizedModel === "user" || normalizedModel === "users") && shouldJoinAccounts) {
+            const userId = typeof row.id === "string" ? row.id : "";
+            if (!userId) {
+              return {
+                ...row,
+                account: [],
+              };
+            }
+
+            const accounts = await convexClient.query(api.authDb.findMany, {
+              model: "account",
+              where: sanitizeWhere([
+                {
+                  field: "userId",
+                  value: userId,
+                },
+              ]),
+            });
+
+            return {
+              ...row,
+              account: Array.isArray(accounts) ? accounts : [],
+            };
+          }
+
+          return row;
         } catch (error) {
           throwAdapterError("findOne", model, where, error);
         }
