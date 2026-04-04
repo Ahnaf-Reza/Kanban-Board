@@ -172,13 +172,14 @@ export function AccountProfilePage({
 
     setIsAvatarUpdating(true);
     try {
-      const avatarUrl = (await runWithConvexAuthRetry(async () =>
-        (await client.mutation(convexRefs.saveCurrentUserAvatar, {
+      await runWithConvexAuthRetry(async () =>
+        (await client.mutation(convexRefs.upsertCurrentUser, {
+          name: name.trim() || undefined,
           avatarUrl: normalizedUrl,
         })) as string,
-      )) as string;
+      );
 
-      const bestAvatarUrl = avatarUrl.trim() || normalizedUrl;
+      const bestAvatarUrl = normalizedUrl;
       setImage(bestAvatarUrl);
       setAvatarLinkDraft(bestAvatarUrl);
       onAvatarUpdated(bestAvatarUrl);
@@ -284,12 +285,12 @@ export function AccountProfilePage({
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/40 bg-white/75 px-4 py-3 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
+      <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-white/40 bg-white/75 px-4 py-3 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70 sm:flex-row sm:items-center">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-cyan-300">Account</p>
           <h2 className="text-2xl font-bold tracking-tight">Profile Settings</h2>
         </div>
-        <Button variant="secondary" onClick={onBackToBoard} className="gap-2">
+        <Button variant="secondary" onClick={onBackToBoard} className="gap-2 px-3 py-2 text-sm sm:text-base">
           <ArrowLeft size={16} />
           Back to Board
         </Button>

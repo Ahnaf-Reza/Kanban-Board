@@ -17,8 +17,8 @@ import {
 } from "./components/ui/dropdown-menu";
 import { useDarkMode } from "./hooks/useDarkMode";
 import { useBetterAuthSession } from "./hooks/useBetterAuthSession";
-import { getConfiguredOauthProviders } from "./lib/authClient";
-import { getConvexClient } from "./lib/convexClient";
+import { fetchConvexJwtToken, getConfiguredOauthProviders } from "./lib/authClient";
+import { getConvexClient, setConvexAuthToken } from "./lib/convexClient";
 import { convexRefs } from "./lib/convexRefs";
 import { useBoardStore } from "./store/boardStore";
 
@@ -132,7 +132,15 @@ function App() {
 
     const loadConvexAvatar = async () => {
       try {
-        const currentUser = (await client.query(convexRefs.getCurrentUser, {})) as { image?: unknown } | null;
+        let currentUser = (await client.query(convexRefs.getCurrentUser, {})) as { image?: unknown } | null;
+        if (!currentUser) {
+          const token = await fetchConvexJwtToken();
+          if (token) {
+            setConvexAuthToken(token);
+            currentUser = (await client.query(convexRefs.getCurrentUser, {})) as { image?: unknown } | null;
+          }
+        }
+
         if (cancelled) {
           return;
         }
