@@ -112,6 +112,7 @@ export function AccountProfilePage({
 
   const handleAvatarFilePick = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setProfileStatus(null);
+    const fileInput = event.currentTarget;
 
     const file = event.target.files?.[0];
     if (!file) {
@@ -120,13 +121,13 @@ export function AccountProfilePage({
 
     if (!file.type || !ALLOWED_AVATAR_MIME_TYPES.has(file.type)) {
       setProfileStatus("Please upload a JPG, PNG, WebP, GIF, or AVIF image.");
-      event.currentTarget.value = "";
+      fileInput.value = "";
       return;
     }
 
     if (file.size > MAX_AVATAR_FILE_SIZE_BYTES) {
       setProfileStatus("Image must be 5MB or smaller.");
-      event.currentTarget.value = "";
+      fileInput.value = "";
       return;
     }
 
@@ -175,7 +176,7 @@ export function AccountProfilePage({
     } catch (error) {
       setProfileStatus(toFriendlyStatus(error, "Image upload failed. Please try again."));
     } finally {
-      event.currentTarget.value = "";
+      fileInput.value = "";
       setIsAvatarUploading(false);
     }
   };
