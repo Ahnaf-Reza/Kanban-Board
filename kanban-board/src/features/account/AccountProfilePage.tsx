@@ -70,6 +70,8 @@ export function AccountProfilePage({
 }: AccountProfilePageProps) {
   const [name, setName] = useState(sessionUser?.name || "");
   const [image, setImage] = useState(sessionUser?.image || "");
+  const [avatarLinkDraft, setAvatarLinkDraft] = useState("");
+  const [isAvatarLinkEditorOpen, setIsAvatarLinkEditorOpen] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -93,6 +95,8 @@ export function AccountProfilePage({
   useEffect(() => {
     setName(sessionUser?.name || "");
     setImage(sessionUser?.image || "");
+    setAvatarLinkDraft(sessionUser?.image || "");
+    setIsAvatarLinkEditorOpen(false);
   }, [sessionUser]);
 
   useEffect(() => {
@@ -151,10 +155,10 @@ export function AccountProfilePage({
     }
   };
 
-  const handleAvatarLinkSave = async () => {
+  const handleAvatarLinkSave = async (rawImageUrl: string) => {
     setProfileStatus(null);
 
-    const normalizedUrl = normalizeImageUrl(image);
+    const normalizedUrl = normalizeImageUrl(rawImageUrl);
     if (!normalizedUrl) {
       setProfileStatus("Paste a valid HTTP(S) image link.");
       return;
@@ -176,7 +180,9 @@ export function AccountProfilePage({
 
       const bestAvatarUrl = avatarUrl.trim() || normalizedUrl;
       setImage(bestAvatarUrl);
+      setAvatarLinkDraft(bestAvatarUrl);
       onAvatarUpdated(bestAvatarUrl);
+      setIsAvatarLinkEditorOpen(false);
 
       try {
         await updateUserProfile({ image: bestAvatarUrl || null });
@@ -300,20 +306,42 @@ export function AccountProfilePage({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <Input
-              label="Profile image link"
-              value={image}
-              onChange={(event) => setImage(event.target.value)}
-              placeholder="https://example.com/avatar.jpg"
-            />
-            <button
-              type="button"
-              className="flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-              onClick={() => void handleAvatarLinkSave()}
-              disabled={isAvatarUpdating}
-            >
-              Save image link
-            </button>
+            {isAvatarLinkEditorOpen ? (
+              <div className="flex items-end gap-2">
+                <Input
+                  label="Profile image link"
+                  value={avatarLinkDraft}
+                  onChange={(event) => setAvatarLinkDraft(event.target.value)}
+                  placeholder="https://example.com/avatar.jpg"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleAvatarLinkSave(avatarLinkDraft);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="mb-[1px] flex h-10 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => void handleAvatarLinkSave(avatarLinkDraft)}
+                  disabled={isAvatarUpdating}
+                >
+                  Confirm change
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={() => {
+                  setAvatarLinkDraft(image);
+                  setIsAvatarLinkEditorOpen(true);
+                }}
+                disabled={isAvatarUpdating}
+              >
+                Upload image link
+              </button>
+            )}
             {isAvatarUpdating ? <p className="text-sm text-slate-500 dark:text-slate-400">Saving image link...</p> : null}
           </div>
         </div>
