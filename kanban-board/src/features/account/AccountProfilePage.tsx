@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Trash2, UserCircle2 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
@@ -28,14 +28,28 @@ type AccountProfilePageProps = {
   onAvatarUpdated: (avatarUrl: string) => void;
 };
 
-const MAX_AVATAR_FILE_SIZE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_AVATAR_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
-
 function toFriendlyStatus(error: unknown, fallback: string): string {
   if (error instanceof Error) {
     return sanitizeUserFacingErrorMessage(error.message, fallback);
   }
   return sanitizeUserFacingErrorMessage("", fallback);
+}
+
+function normalizeImageUrl(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
 }
 
 function isUnauthorizedConvexError(error: unknown): boolean {
@@ -54,7 +68,6 @@ export function AccountProfilePage({
   onAccountDeleted,
   onAvatarUpdated,
 }: AccountProfilePageProps) {
-  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [name, setName] = useState(sessionUser?.name || "");
   const [image, setImage] = useState(sessionUser?.image || "");
 
@@ -73,7 +86,7 @@ export function AccountProfilePage({
   const [deleteStatus, setDeleteStatus] = useState<string | null>(null);
 
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
-  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const [isAvatarUpdating, setIsAvatarUpdating] = useState(false);
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
   const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
 
@@ -138,24 +151,12 @@ export function AccountProfilePage({
     }
   };
 
-  const handleAvatarFilePick = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarLinkSave = async () => {
     setProfileStatus(null);
-    const fileInput = event.currentTarget;
 
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    if (!file.type || !ALLOWED_AVATAR_MIME_TYPES.has(file.type)) {
-      setProfileStatus("Please upload a JPG, PNG, WebP, GIF, or AVIF image.");
-      fileInput.value = "";
-      return;
-    }
-
-    if (file.size > MAX_AVATAR_FILE_SIZE_BYTES) {
-      setProfileStatus("Image must be 5MB or smaller.");
-      fileInput.value = "";
+    const normalizedUrl = normalizeImageUrl(image);
+    if (!normalizedUrl) {
+      setProfileStatus("Paste a valid HTTP(S) image link.");
       return;
     }
 
@@ -165,58 +166,18 @@ export function AccountProfilePage({
       return;
     }
 
-    setIsAvatarUploading(true);
+    setIsAvatarUpdating(true);
     try {
-      const uploadUrl = (await runWithConvexAuthRetry(async () =>
-        (await client.mutation(convexRefs.generateAvatarUploadUrl, {})) as string,
-      )) as string;
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "POST",
-        body: file,
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Failed to upload image to Convex storage.");
-      }
-
-      const payload = (await uploadResponse.json()) as { storageId?: unknown };
-      if (typeof payload.storageId !== "string" || payload.storageId.length === 0) {
-        throw new Error("Invalid upload response from Convex storage.");
-      }
-
       const avatarUrl = (await runWithConvexAuthRetry(async () =>
         (await client.mutation(convexRefs.saveCurrentUserAvatar, {
-          storageId: payload.storageId,
+          avatarUrl: normalizedUrl,
         })) as string,
       )) as string;
 
-      let bestAvatarUrl = avatarUrl.trim();
+      const bestAvatarUrl = avatarUrl.trim() || normalizedUrl;
+      setImage(bestAvatarUrl);
+      onAvatarUpdated(bestAvatarUrl);
 
-      const resolvedAvatarUrl = avatarUrl.trim();
-      if (!resolvedAvatarUrl) {
-        for (let attempt = 0; attempt < 3; attempt += 1) {
-          if (attempt > 0) {
-            await new Promise((resolve) => window.setTimeout(resolve, 350));
-          }
-
-          const currentUser = (await runWithConvexAuthRetry(async () =>
-            (await client.query(convexRefs.getCurrentUser, {})) as { image?: unknown } | null,
-          )) as { image?: unknown } | null;
-
-          const delayedAvatarUrl = typeof currentUser?.image === "string" ? currentUser.image.trim() : "";
-          if (delayedAvatarUrl) {
-            bestAvatarUrl = delayedAvatarUrl;
-            break;
-          }
-        }
-      }
-
-      if (bestAvatarUrl) {
-        setImage(bestAvatarUrl);
-        onAvatarUpdated(bestAvatarUrl);
-      }
-
-      // Convex is the source of truth for stored avatars; Better Auth profile sync is best-effort.
       try {
         await updateUserProfile({ image: bestAvatarUrl || null });
         await onRefreshSession();
@@ -224,12 +185,11 @@ export function AccountProfilePage({
         // Ignore non-fatal profile mirror failures.
       }
 
-      setProfileStatus(bestAvatarUrl ? "Profile image updated." : "Image uploaded. It should appear shortly.");
+      setProfileStatus("Profile image updated.");
     } catch (error) {
-      setProfileStatus(toFriendlyStatus(error, "Image upload failed. Please try again."));
+      setProfileStatus(toFriendlyStatus(error, "Image update failed. Please try again."));
     } finally {
-      fileInput.value = "";
-      setIsAvatarUploading(false);
+      setIsAvatarUpdating(false);
     }
   };
 
@@ -339,24 +299,22 @@ export function AccountProfilePage({
               <UserCircle2 size={50} className="text-slate-400" />
             )}
           </div>
-          <div>
-            <input
-              ref={avatarInputRef}
-              className="hidden"
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                void handleAvatarFilePick(event);
-              }}
+          <div className="min-w-0 flex-1">
+            <Input
+              label="Profile image link"
+              value={image}
+              onChange={(event) => setImage(event.target.value)}
+              placeholder="https://example.com/avatar.jpg"
             />
             <button
               type="button"
               className="flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-              onClick={() => avatarInputRef.current?.click()}
+              onClick={() => void handleAvatarLinkSave()}
+              disabled={isAvatarUpdating}
             >
-              Upload photo
+              Save image link
             </button>
-            {isAvatarUploading ? <p className="text-sm text-slate-500 dark:text-slate-400">Uploading image...</p> : null}
+            {isAvatarUpdating ? <p className="text-sm text-slate-500 dark:text-slate-400">Saving image link...</p> : null}
           </div>
         </div>
 

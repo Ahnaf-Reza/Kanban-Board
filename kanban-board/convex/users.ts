@@ -10,6 +10,27 @@ function normalizeEmail(email: string | null | undefined): string | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
+function normalizeAvatarUrl(avatarUrl: string | null | undefined): string | undefined {
+  if (typeof avatarUrl !== "string") {
+    return undefined;
+  }
+
+  const trimmed = avatarUrl.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return undefined;
+    }
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
@@ -24,17 +45,6 @@ export const getCurrentUser = query({
       .unique();
 
     if (byToken) {
-      if (byToken.avatarStorageId) {
-        const freshAvatarUrl = await ctx.storage.getUrl(byToken.avatarStorageId);
-        if (freshAvatarUrl) {
-          return {
-            ...byToken,
-            image: freshAvatarUrl,
-            avatarUrl: freshAvatarUrl,
-          };
-        }
-      }
-
       return byToken;
     }
 
@@ -52,19 +62,7 @@ export const getCurrentUser = query({
       return null;
     }
 
-    const latestByEmail = byEmail.sort((a, b) => b.updatedAt - a.updatedAt)[0];
-    if (latestByEmail.avatarStorageId) {
-      const freshAvatarUrl = await ctx.storage.getUrl(latestByEmail.avatarStorageId);
-      if (freshAvatarUrl) {
-        return {
-          ...latestByEmail,
-          image: freshAvatarUrl,
-          avatarUrl: freshAvatarUrl,
-        };
-      }
-    }
-
-    return latestByEmail;
+    return byEmail.sort((a, b) => b.updatedAt - a.updatedAt)[0];
   },
 });
 
@@ -105,7 +103,7 @@ export const upsertCurrentUser = mutation({
     }
 
     const nextName = args.name ?? identity.name ?? undefined;
-    const nextAvatarUrl = args.avatarUrl ?? identity.pictureUrl ?? undefined;
+    const nextAvatarUrl = normalizeAvatarUrl(args.avatarUrl) ?? normalizeAvatarUrl(identity.pictureUrl);
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -137,21 +135,9 @@ export const upsertCurrentUser = mutation({
   },
 });
 
-export const generateAvatarUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    return await ctx.storage.generateUploadUrl();
-  },
-});
-
 export const saveCurrentUserAvatar = mutation({
   args: {
-    storageId: v.id("_storage"),
+    avatarUrl: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -160,7 +146,10 @@ export const saveCurrentUserAvatar = mutation({
     }
 
     const now = Date.now();
-    const fileUrl = await ctx.storage.getUrl(args.storageId);
+    const normalizedAvatarUrl = normalizeAvatarUrl(args.avatarUrl);
+    if (!normalizedAvatarUrl) {
+      throw new Error("Please provide a valid HTTP(S) image URL.");
+    }
 
     const normalizedEmail = normalizeEmail(identity.email);
     let existing = await ctx.db
@@ -181,12 +170,11 @@ export const saveCurrentUserAvatar = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        image: fileUrl ?? existing.image,
-        avatarUrl: fileUrl ?? existing.avatarUrl,
-        avatarStorageId: args.storageId,
+        image: normalizedAvatarUrl,
+        avatarUrl: normalizedAvatarUrl,
         updatedAt: now,
       });
-      return fileUrl ?? "";
+      return normalizedAvatarUrl;
     }
 
     await ctx.db.insert("users", {
@@ -196,14 +184,13 @@ export const saveCurrentUserAvatar = mutation({
       issuer: identity.issuer,
       email: normalizedEmail ?? "",
       emailVerified: true,
-      image: fileUrl ?? undefined,
-      avatarUrl: fileUrl ?? undefined,
-      avatarStorageId: args.storageId,
+      image: normalizedAvatarUrl,
+      avatarUrl: normalizedAvatarUrl,
       name: identity.name ?? "",
       createdAt: now,
       updatedAt: now,
     });
 
-    return fileUrl ?? "";
+    return normalizedAvatarUrl;
   },
 });
