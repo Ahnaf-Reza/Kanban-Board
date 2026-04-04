@@ -52,6 +52,8 @@ type BetterAuthErrorPayload = {
   code?: string;
 };
 
+const GENERIC_AUTH_ERROR_MESSAGE = "Something went wrong. Please try again.";
+
 type LinkedAccount = {
   providerId: string;
   accountId: string;
@@ -61,6 +63,38 @@ function toRouteUrl(route: string): string {
   const normalizedBase = betterAuthBaseUrl.endsWith("/") ? betterAuthBaseUrl.slice(0, -1) : betterAuthBaseUrl;
   const normalizedRoute = route.startsWith("/") ? route : `/${route}`;
   return `${normalizedBase}${normalizedRoute}`;
+}
+
+export function sanitizeUserFacingErrorMessage(rawMessage: string | null | undefined, fallback: string): string {
+  const fallbackMessage = fallback.trim().length > 0 ? fallback : GENERIC_AUTH_ERROR_MESSAGE;
+  if (!rawMessage) {
+    return fallbackMessage;
+  }
+
+  const withoutRequestIds = rawMessage
+    .replace(/\[\s*request\s*id\s*:[^\]]*\]/gi, "")
+    .replace(/request\s*id\s*:[\w-]+/gi, "")
+    .trim();
+
+  if (!withoutRequestIds) {
+    return fallbackMessage;
+  }
+
+  const lowered = withoutRequestIds.toLowerCase();
+  if (
+    lowered === "server error" ||
+    lowered.includes("internal server error") ||
+    lowered.includes("failed with status") ||
+    lowered.includes("status 5") ||
+    lowered.includes("status 4") ||
+    lowered.includes("error code") ||
+    lowered.includes("networkerror") ||
+    lowered.includes("failed to fetch")
+  ) {
+    return fallbackMessage;
+  }
+
+  return withoutRequestIds;
 }
 
 async function parseErrorPayload(response: Response): Promise<BetterAuthErrorPayload | null> {
@@ -85,8 +119,8 @@ async function callAuthJson<TResponse>(route: string, init?: RequestInit): Promi
 
   if (!response.ok) {
     const errorPayload = await parseErrorPayload(response);
-    const fallback = `Request to ${route} failed with status ${response.status}.`;
-    throw new Error(errorPayload?.message || errorPayload?.error || fallback);
+    const rawErrorMessage = errorPayload?.message || errorPayload?.error || `Request failed with status ${response.status}.`;
+    throw new Error(sanitizeUserFacingErrorMessage(rawErrorMessage, GENERIC_AUTH_ERROR_MESSAGE));
   }
 
   return (await response.json()) as TResponse;

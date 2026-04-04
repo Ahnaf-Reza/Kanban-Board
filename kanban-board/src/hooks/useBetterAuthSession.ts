@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { authClient, fetchConvexJwtToken } from "../lib/authClient";
+import { authClient, fetchConvexJwtToken, sanitizeUserFacingErrorMessage } from "../lib/authClient";
 import { clearConvexAuthToken, hasConvexAuthToken, setConvexAuthToken } from "../lib/convexClient";
 
 const TOKEN_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
@@ -15,15 +15,15 @@ type AuthResultWithError = {
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) {
-    return error.message;
+    return sanitizeUserFacingErrorMessage(error.message, fallback);
   }
-  return fallback;
+  return sanitizeUserFacingErrorMessage("", fallback);
 }
 
 function ensureNoAuthError(result: unknown, fallback: string): void {
   const maybeResult = result as AuthResultWithError;
   if (maybeResult?.error?.message) {
-    throw new Error(maybeResult.error.message);
+    throw new Error(sanitizeUserFacingErrorMessage(maybeResult.error.message, fallback));
   }
 
   if (maybeResult?.error) {

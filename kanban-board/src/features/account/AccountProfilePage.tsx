@@ -9,6 +9,7 @@ import {
   changePassword,
   deleteCurrentUser,
   listLinkedAccounts,
+  sanitizeUserFacingErrorMessage,
   updateUserProfile,
 } from "../../lib/authClient";
 
@@ -26,22 +27,14 @@ type AccountProfilePageProps = {
   onAvatarUpdated: (avatarUrl: string) => void;
 };
 
+const MAX_AVATAR_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]);
+
 function toFriendlyStatus(error: unknown, fallback: string): string {
-  if (!(error instanceof Error)) {
-    return fallback;
+  if (error instanceof Error) {
+    return sanitizeUserFacingErrorMessage(error.message, fallback);
   }
-
-  const message = error.message.trim();
-  if (!message) {
-    return fallback;
-  }
-
-  const lowered = message.toLowerCase();
-  if (lowered === "server error" || lowered.includes("status 5") || lowered.includes("internal server error")) {
-    return fallback;
-  }
-
-  return message;
+  return sanitizeUserFacingErrorMessage("", fallback);
 }
 
 export function AccountProfilePage({
@@ -122,6 +115,18 @@ export function AccountProfilePage({
 
     const file = event.target.files?.[0];
     if (!file) {
+      return;
+    }
+
+    if (!file.type || !ALLOWED_AVATAR_MIME_TYPES.has(file.type)) {
+      setProfileStatus("Please upload a JPG, PNG, WebP, GIF, or AVIF image.");
+      event.currentTarget.value = "";
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_FILE_SIZE_BYTES) {
+      setProfileStatus("Image must be 5MB or smaller.");
+      event.currentTarget.value = "";
       return;
     }
 
