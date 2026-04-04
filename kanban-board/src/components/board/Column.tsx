@@ -37,7 +37,7 @@ export function Column({
   const [titleDraft, setTitleDraft] = useState(column.title);
   const previousTaskCountRef = useRef(tasks.length);
   const seenTaskIdsRef = useRef<Set<string>>(new Set(tasks.map((task) => task.id)));
-  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const { setNodeRef } = useDroppable({ id: column.id });
 
   useEffect(() => {
     setTitleDraft(column.title);
@@ -171,7 +171,7 @@ export function Column({
         <div className="space-y-2">
           {tasks.length === 0 ? (
             <Card className="text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              {isOver ? "Drop here" : "No tasks yet."}
+              No tasks yet.
             </Card>
           ) : null}
           <AnimatePresence initial={false}>

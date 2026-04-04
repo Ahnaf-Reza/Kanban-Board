@@ -245,7 +245,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
 
       <Card className="space-y-4 border-white/40 bg-white/75 shadow-xl backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70">
         <h3 className="text-lg font-semibold">Profile</h3>
-        <div className="flex flex-col items-start gap-3 md:flex-row md:items-start">
+        <div className="flex items-center gap-3">
           <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
             {previewAvatar ? (
               <img src={previewAvatar} alt="Profile" className="h-full w-full object-cover" />
@@ -253,7 +253,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
               <UserCircle2 size={50} className="text-slate-400" />
             )}
           </div>
-          <div className="w-full">
+          <div>
             <input
               ref={avatarInputRef}
               className="hidden"
@@ -265,7 +265,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
             />
             <button
               type="button"
-              className="flex h-10 w-full items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+              className="flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
               onClick={() => avatarInputRef.current?.click()}
             >
               Upload photo
