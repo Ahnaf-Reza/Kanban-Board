@@ -196,6 +196,19 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
         await changePassword(currentPassword, newPassword);
       }
 
+      try {
+        const accounts = await listLinkedAccounts();
+        const hasCredential = accounts.some((account) => account.providerId === "credential");
+        const hasGoogle = accounts.some((account) => account.providerId === "google");
+        setHasCredentialAccount(hasCredential);
+        setHasGoogleAccount(hasGoogle);
+      } catch {
+        // If account refresh fails, keep the success state from the password operation.
+        if (isSetPasswordMode) {
+          setHasCredentialAccount(true);
+        }
+      }
+
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");

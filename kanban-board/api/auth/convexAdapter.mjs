@@ -125,9 +125,24 @@ export function convexAdapter(convexClient) {
               ]),
             });
 
+            const sortedAccounts = Array.isArray(accounts)
+              ? [...accounts].sort((left, right) => {
+                  const leftIsCredentialWithPassword =
+                    left?.providerId === "credential" && typeof left?.password === "string" && left.password.length > 0;
+                  const rightIsCredentialWithPassword =
+                    right?.providerId === "credential" && typeof right?.password === "string" && right.password.length > 0;
+
+                  if (leftIsCredentialWithPassword === rightIsCredentialWithPassword) {
+                    return 0;
+                  }
+
+                  return leftIsCredentialWithPassword ? -1 : 1;
+                })
+              : [];
+
             return {
               ...row,
-              account: Array.isArray(accounts) ? accounts : [],
+              account: sortedAccounts,
             };
           }
 
