@@ -23,9 +23,34 @@ type AccountProfilePageProps = {
   onBackToBoard: () => void;
   onRefreshSession: () => Promise<void>;
   onAccountDeleted: () => void;
+  onAvatarUpdated: (avatarUrl: string) => void;
 };
 
-export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSession, onAccountDeleted }: AccountProfilePageProps) {
+function toFriendlyStatus(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  const message = error.message.trim();
+  if (!message) {
+    return fallback;
+  }
+
+  const lowered = message.toLowerCase();
+  if (lowered === "server error" || lowered.includes("status 5") || lowered.includes("internal server error")) {
+    return fallback;
+  }
+
+  return message;
+}
+
+export function AccountProfilePage({
+  sessionUser,
+  onBackToBoard,
+  onRefreshSession,
+  onAccountDeleted,
+  onAvatarUpdated,
+}: AccountProfilePageProps) {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [name, setName] = useState(sessionUser?.name || "");
   const [image, setImage] = useState(sessionUser?.image || "");
@@ -131,11 +156,19 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
       })) as string;
 
       setImage(avatarUrl);
-      await updateUserProfile({ image: avatarUrl });
-      await onRefreshSession();
+      onAvatarUpdated(avatarUrl);
+
+      // Convex is the source of truth for stored avatars; Better Auth profile sync is best-effort.
+      try {
+        await updateUserProfile({ image: avatarUrl });
+        await onRefreshSession();
+      } catch {
+        // Ignore non-fatal profile mirror failures.
+      }
+
       setProfileStatus("Profile image updated.");
     } catch (error) {
-      setProfileStatus(error instanceof Error ? error.message : "Image upload failed.");
+      setProfileStatus(toFriendlyStatus(error, "Image upload failed. Please try again."));
     } finally {
       event.currentTarget.value = "";
       setIsAvatarUploading(false);
@@ -158,7 +191,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
       await onRefreshSession();
       setProfileStatus("Profile updated.");
     } catch (error) {
-      setProfileStatus(error instanceof Error ? error.message : "Profile update failed.");
+      setProfileStatus(toFriendlyStatus(error, "Profile update failed. Please try again."));
     } finally {
       setIsProfileSubmitting(false);
     }
@@ -196,7 +229,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
       setConfirmPassword("");
       setPasswordStatus("Password updated successfully.");
     } catch (error) {
-      setPasswordStatus(error instanceof Error ? error.message : "Password update failed.");
+      setPasswordStatus(toFriendlyStatus(error, "Password update failed. Please try again."));
     } finally {
       setIsPasswordSubmitting(false);
     }
@@ -220,7 +253,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
       await deleteCurrentUser(hasCredentialAccount ? deletePassword : undefined);
       onAccountDeleted();
     } catch (error) {
-      setDeleteStatus(error instanceof Error ? error.message : "Account deletion failed.");
+      setDeleteStatus(toFriendlyStatus(error, "Account deletion failed. Please try again."));
       setIsDeleteSubmitting(false);
     }
   };

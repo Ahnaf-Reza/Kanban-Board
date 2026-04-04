@@ -57,6 +57,18 @@ function App() {
   const previousColumnCountRef = useRef(columnCount);
   const oauthProviders = useMemo(() => getConfiguredOauthProviders(), []);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+  const [convexAvatarUrl, setConvexAvatarUrl] = useState<string | null>(null);
+
+  const resolvedSessionUser = useMemo(() => {
+    if (!sessionUser) {
+      return null;
+    }
+
+    return {
+      ...sessionUser,
+      image: sessionUser.image || convexAvatarUrl,
+    };
+  }, [convexAvatarUrl, sessionUser]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -88,7 +100,7 @@ function App() {
         try {
           await client.mutation(convexRefs.upsertCurrentUser, {
             name: sessionUser.name || undefined,
-            avatarUrl: sessionUser.image || undefined,
+            avatarUrl: (sessionUser.image || convexAvatarUrl) || undefined,
           });
           return;
         } catch {
@@ -103,7 +115,45 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, isTokenReady, sessionUser]);
+  }, [convexAvatarUrl, isAuthenticated, isTokenReady, sessionUser]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isTokenReady) {
+      setConvexAvatarUrl(null);
+      return;
+    }
+
+    const client = getConvexClient();
+    if (!client) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadConvexAvatar = async () => {
+      try {
+        const currentUser = (await client.query(convexRefs.getCurrentUser, {})) as { image?: unknown } | null;
+        if (cancelled) {
+          return;
+        }
+
+        const nextAvatar = typeof currentUser?.image === "string" && currentUser.image.trim().length > 0
+          ? currentUser.image
+          : null;
+        setConvexAvatarUrl(nextAvatar);
+      } catch {
+        if (!cancelled) {
+          setConvexAvatarUrl((existing) => existing ?? null);
+        }
+      }
+    };
+
+    void loadConvexAvatar();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isTokenReady]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -263,9 +313,9 @@ function App() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Open account menu">
-                    {sessionUser?.image ? (
+                    {resolvedSessionUser?.image ? (
                       <img
-                        src={sessionUser.image}
+                        src={resolvedSessionUser.image}
                         alt="Profile"
                         className="h-8 w-8 rounded-full object-cover"
                       />
@@ -327,9 +377,10 @@ function App() {
               </>
             ) : (
               <AccountProfilePage
-                sessionUser={sessionUser}
+                sessionUser={resolvedSessionUser}
                 onBackToBoard={() => setActiveView("board")}
                 onRefreshSession={refreshSession}
+                onAvatarUpdated={(avatarUrl: string) => setConvexAvatarUrl(avatarUrl)}
                 onAccountDeleted={() => {
                   resetForSignOut();
                   window.location.reload();

@@ -24,6 +24,17 @@ export const getCurrentUser = query({
       .unique();
 
     if (byToken) {
+      if (byToken.avatarStorageId) {
+        const freshAvatarUrl = await ctx.storage.getUrl(byToken.avatarStorageId);
+        if (freshAvatarUrl) {
+          return {
+            ...byToken,
+            image: freshAvatarUrl,
+            avatarUrl: freshAvatarUrl,
+          };
+        }
+      }
+
       return byToken;
     }
 
@@ -41,7 +52,19 @@ export const getCurrentUser = query({
       return null;
     }
 
-    return byEmail.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+    const latestByEmail = byEmail.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+    if (latestByEmail.avatarStorageId) {
+      const freshAvatarUrl = await ctx.storage.getUrl(latestByEmail.avatarStorageId);
+      if (freshAvatarUrl) {
+        return {
+          ...latestByEmail,
+          image: freshAvatarUrl,
+          avatarUrl: freshAvatarUrl,
+        };
+      }
+    }
+
+    return latestByEmail;
   },
 });
 
@@ -163,6 +186,7 @@ export const saveCurrentUserAvatar = mutation({
       await ctx.db.patch(existing._id, {
         image: fileUrl,
         avatarUrl: fileUrl,
+        avatarStorageId: args.storageId,
         updatedAt: now,
       });
       return fileUrl;
@@ -177,6 +201,7 @@ export const saveCurrentUserAvatar = mutation({
       emailVerified: true,
       image: fileUrl,
       avatarUrl: fileUrl,
+      avatarStorageId: args.storageId,
       name: identity.name ?? "",
       createdAt: now,
       updatedAt: now,
