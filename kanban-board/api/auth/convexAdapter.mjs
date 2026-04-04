@@ -132,6 +132,12 @@ export function convexAdapter(convexClient) {
                   const rightIsCredentialWithPassword =
                     right?.providerId === "credential" && typeof right?.password === "string" && right.password.length > 0;
 
+                  if (leftIsCredentialWithPassword && rightIsCredentialWithPassword) {
+                    const leftUpdatedAt = typeof left?.updatedAt === "number" ? left.updatedAt : 0;
+                    const rightUpdatedAt = typeof right?.updatedAt === "number" ? right.updatedAt : 0;
+                    return rightUpdatedAt - leftUpdatedAt;
+                  }
+
                   if (leftIsCredentialWithPassword === rightIsCredentialWithPassword) {
                     return 0;
                   }
@@ -140,9 +146,19 @@ export function convexAdapter(convexClient) {
                 })
               : [];
 
+            const hasCredentialWithPassword = sortedAccounts.some(
+              (account) => account?.providerId === "credential" && typeof account?.password === "string" && account.password.length > 0,
+            );
+
+            const normalizedAccounts = hasCredentialWithPassword
+              ? sortedAccounts.filter(
+                  (account) => account?.providerId !== "credential" || (typeof account?.password === "string" && account.password.length > 0),
+                )
+              : sortedAccounts;
+
             return {
               ...row,
-              account: sortedAccounts,
+              account: normalizedAccounts,
             };
           }
 

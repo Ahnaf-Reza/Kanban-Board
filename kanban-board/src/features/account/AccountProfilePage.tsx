@@ -27,6 +27,7 @@ type AccountProfilePageProps = {
 };
 
 export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSession, onAccountDeleted }: AccountProfilePageProps) {
+  const allowPasswordSetupForSocialAccounts = (import.meta.env.VITE_ENABLE_SOCIAL_PASSWORD_SETUP as string | undefined) !== "false";
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [name, setName] = useState(sessionUser?.name || "");
   const [image, setImage] = useState(sessionUser?.image || "");
@@ -96,7 +97,7 @@ export function AccountProfilePage({ sessionUser, onBackToBoard, onRefreshSessio
   const previewAvatar = useMemo(() => image.trim() || null, [image]);
   const canSaveProfile = name.trim().length >= 2;
   const canDelete = deleteConfirmText.trim().toUpperCase() === "DELETE";
-  const isSetPasswordMode = !hasCredentialAccount && hasGoogleAccount;
+  const isSetPasswordMode = allowPasswordSetupForSocialAccounts && !hasCredentialAccount && hasGoogleAccount;
 
   const handleAvatarFilePick = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setProfileStatus(null);
