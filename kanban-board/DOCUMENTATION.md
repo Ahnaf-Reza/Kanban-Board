@@ -1,123 +1,266 @@
-# Documentation
+# Kanban Board Technical Documentation
 
-Last updated: 2026-03-18
+Last updated: 2026-04-05
 
-## 1) Current Project Status
+## 1) Project Snapshot
 
-### Completed
+This repository contains a production-style Kanban board built with React + TypeScript on the frontend, Convex for application data, and Better Auth for authentication.
 
-- Strict TypeScript project setup with no explicit any usage in app code.
-- UI primitives are implemented in src/components/ui:
-  - Button
-  - Card
-  - AutoTextarea
-  - Input
-  - IconButton
-  - Modal
-- UI prop contracts are centralized in src/types/ui.ts.
-- Domain and state contracts are centralized in src/types/board.ts.
-- Board store is implemented in src/store/boardStore.ts with:
-  - task and column CRUD actions
-  - undo/redo history snapshots
-  - persist middleware storage
-  - persistence hydration validation through board guards
-- Runtime validation utilities are implemented in src/utils/boardGuards.ts.
-- Board feature files are wired and compiling:
-  - src/features/board/BoardView.tsx
-  - src/components/board/Column.tsx
-  - src/components/board/TaskCard.tsx
-- Day 14 polish features implemented in code:
-  - debounced task auto-save (useDebouncedCallback)
-  - framer-motion task animations
-  - dark mode hook using system preference detection with persisted manual override
-  - useMemo-based task filtering and derived board data
-  - class-driven Tailwind dark variant wired to the `dark` root class
-  - modal and input dark-mode surface styling for Create Column and Delete Column dialogs
-- Day 3 concept integration implemented in code:
-  - async queue utility in src/utils/asyncQueue.ts
-  - queued mock remote save path in src/lib/taskApi.ts
+The app currently supports:
 
-### In Progress / Partial
+- Email/password authentication.
+- Google OAuth (when provider env vars are configured).
+- Better Auth JWT token exchange and Convex authenticated API calls.
+- User-scoped board data in Convex (owner-based isolation).
+- Task/column CRUD with drag and drop.
+- Undo/redo timeline snapshots.
+- Debounced autosave + optimistic task editing rollback behavior.
+- Account profile management (name/avatar/password/delete-account).
+- Cloudinary avatar upload with Convex user sync.
+- Responsive horizontal board scrolling and dark mode.
 
-- Optimistic updates with rollback are implemented in task editing flow, but still need full end-to-end UX validation under simulated failures.
-- DnD behavior compiles, but full production-grade interactions and keyboard behavior still need manual testing and polish.
+## 2) What Changed Recently
 
-### Not Done Yet
+The latest updates are centered around auth hardening, profile/account reliability, and board UX polish.
 
-- React DevTools performance profiling pass is not documented as completed yet.
-- Deployment docs/case-study and CI pipeline are still pending.
+### 2.1 Auth + Session Updates
 
-## 2) Deliverables Snapshot (Day 14 Focus)
+- Better Auth is now the active frontend identity provider through `useBetterAuthSession`.
+- Convex token sync is handled by periodic JWT fetch (`/token`) and client auth injection (`setAuth`).
+- Token refresh behavior now uses retries and graceful fallback to avoid auth flapping during transient failures.
+- User-facing auth errors are sanitized to hide noisy backend details (request IDs, raw status noise, generic server internals).
 
-- [x] Auto-save debounced (no rapid API calls)
-- [x] Optimistic updates with rollback on error (implemented)
-- [x] Smooth animations for movement (task-level framer-motion)
-- [x] Dark mode with system preference detection
-- [ ] Performance profiled with React DevTools
+### 2.2 Account/Profile Updates
 
-## 3) Folder Workflow (How Files Connect)
+- Dedicated profile view supports:
+  - Display name update.
+  - Avatar upload to Cloudinary.
+  - Password update (for credential accounts).
+  - Account deletion flow with explicit confirmation.
+- Linked provider introspection is used to determine whether credential-based password controls should be shown.
+- Convex user upsert runs with auth retry semantics to recover from expired/invalid token states.
+- Better Auth profile image mirror is best-effort after avatar upload (non-fatal failure path preserves good UX).
 
-### src/types
+### 2.3 Board UX + State Updates
 
-- board.ts defines core domain contracts (Task, Column, BoardState, IDs).
-- ui.ts defines reusable UI component prop contracts.
+- Board scrolling improvements include:
+  - Left/right scroll controls.
+  - Edge fade masking for horizontal overflow.
+  - Shift + mouse wheel horizontal scrolling.
+  - Hidden desktop scrollbar while keeping touch panning behavior intact.
+- Drag/drop behavior now includes local preview-state ordering for better cross-column hover feedback before drop finalization.
+- Search behavior now supports both task-content matches and column-title matches.
+- Task editing uses debounced save + optimistic rollback, with local draft synchronization to avoid stale edits.
 
-Workflow:
-- Define/change data and prop contracts first.
-- Keep components and store aligned to these shared contracts.
+## 3) Architecture Overview
 
-### src/store
+## 3.1 Frontend Stack
 
-- boardStore.ts is the source of truth for board state.
-- Handles CRUD, history snapshots, undo/redo, and persistence merge.
+- React 19 + TypeScript strict mode.
+- Vite build pipeline.
+- Zustand + Immer + Persist middleware for board state and local timeline.
+- dnd-kit for task/column drag interactions.
+- Framer Motion for board/task motion transitions.
+- Tailwind CSS v4 utility styling.
 
-Workflow:
-- Feature and board components read/write through useBoardStore selectors/actions.
+## 3.2 Auth/Data Stack
 
-### src/utils
+- Better Auth for identity/session management.
+- Better Auth JWT plugin configured with audience `convex`.
+- Convex backend for board and user data persistence.
+- Convex-backed Better Auth adapter (`api/auth/convexAdapter.mjs`) for auth model persistence.
+- Cloudinary unsigned uploads for avatar images.
 
-- boardGuards.ts validates unknown persisted payloads.
-- asyncQueue.ts limits concurrent async operations.
+## 3.3 Runtime Ownership Model
 
-Workflow:
-- Use guards for any unknown external data.
-- Use AsyncQueue for throttled or rate-limited async sync behavior.
+- Board access is owner-scoped.
+- Convex board mutations/queries derive identity server-side and validate ownership before writes.
+- Frontend never passes user identity as a source of authorization truth.
 
-### src/lib
+## 4) App Runtime Flow
 
-- taskApi.ts provides mock async remote update behavior.
+## 4.1 Sign-In To Board Data
 
-Workflow:
-- Keep API wrappers in lib, call them from hooks/components via typed interfaces.
+1. User authenticates via Better Auth (email/password or OAuth).
+2. Frontend obtains a Better Auth JWT using `GET /token`.
+3. JWT is attached to Convex HTTP client via `setConvexAuthToken`.
+4. Board store calls `initializeFromRemote`, which:
+   - bootstraps the default board if missing,
+   - fetches board state from Convex,
+   - normalizes remote data to local typed structures,
+   - resets local undo/redo history to a clean remote snapshot.
 
-### src/hooks
+## 4.2 Token Refresh
 
-- useDebounce.ts: debounced callback utility.
-- useOptimisticUpdate.ts: optimistic mutation helper with rollback.
-- useDarkMode.ts: system-aware dark mode state and document class sync.
+- Token refresh runs on startup and an interval loop.
+- Refresh failures are retried.
+- Existing token can be temporarily retained on transient errors.
+- If repeated failures exceed threshold, auth is cleared and token readiness is dropped.
 
-Workflow:
-- Place reusable behavior hooks here; keep component files focused on UI + composition.
+## 4.3 Board Mutation Pattern
 
-### src/components
+- Local store updates are immediate for responsive UX.
+- Convex write is attempted asynchronously.
+- On backend failure:
+  - error is captured in `remoteError`,
+  - board is resynced from Convex (`syncFromRemote`) to recover consistency.
 
-- ui/: reusable presentation primitives.
-- board/: board-specific display and interaction components.
+Important nuance: create/delete operations avoid unnecessary success-path full-resyncs, which preserves undo/redo continuity for newly changed entities.
 
-Workflow:
-- ui components stay generic.
-- board components compose ui components and connect to store actions/selectors.
+## 5) Board State Model
 
-### src/features
+Board data is normalized in local state:
 
-- board/BoardView.tsx coordinates drag handlers, filtering, and board composition.
+- `tasks: Record<TaskId, Task>`
+- `columns: Record<ColumnId, Column>`
+- `columnOrder: ColumnId[]`
 
-Workflow:
-- Keep feature orchestration in features and delegate rendering details to components.
+Undo/redo behavior:
 
-## 4) Recommended Next Steps
+- Snapshot strategy uses deep clone semantics (`structuredClone`) plus ordered array copy for `columnOrder`.
+- New actions after undo truncate future history.
+- Keyboard shortcuts:
+  - `Ctrl/Cmd + Z`: undo
+  - `Ctrl/Cmd + Shift + Z`: redo
 
-1. Make BoardView the default mounted screen (replace demo-first App flow).
-2. Run manual behavior QA for drag/drop edge cases and optimistic rollback scenarios.
-3. Run and record React DevTools profiling and apply targeted optimizations.
-4. Add deployment/case-study details and CI workflow.
+Persistence behavior:
+
+- Zustand persist key: `kanban-board-storage`.
+- Hydration merge is validated through runtime board guards before adopting persisted data.
+
+## 6) Key Feature Modules
+
+## 6.1 Application Shell
+
+- `src/App.tsx`
+  - Handles auth gating and loading/session-error states.
+  - Orchestrates board/profile view switching.
+  - Binds undo/redo commands and create-column modal.
+  - Resolves profile avatar from Convex user record when available.
+
+## 6.2 Board Feature
+
+- `src/features/board/BoardView.tsx`
+  - Search/filter orchestration.
+  - DnD context and overlay rendering.
+  - Cross-column drag preview staging.
+  - Horizontal scroll controls and edge masks.
+
+- `src/components/board/Column.tsx`
+  - Inline column title editing.
+  - Create task workflow per column.
+  - Animated task list rendering.
+
+- `src/components/board/TaskCard.tsx`
+  - Inline task edit mode.
+  - Debounced autosave.
+  - Optimistic mutation + rollback status messaging.
+
+## 6.3 Account Feature
+
+- `src/features/account/AccountProfilePage.tsx`
+  - Profile edits and avatar upload.
+  - Password change controls based on linked account providers.
+  - Account deletion safety gate.
+  - Convex auth retry wrapper for unauthorized errors.
+
+## 6.4 Auth Utilities
+
+- `src/hooks/useBetterAuthSession.ts`
+  - Session + token synchronization lifecycle.
+  - Auth operation wrappers (sign in/up/out, OAuth).
+  - Sanitized auth error pipeline.
+
+- `src/lib/authClient.ts`
+  - Better Auth client setup.
+  - Token endpoint fetch logic with timeout.
+  - Shared auth JSON call utilities.
+  - User-facing error sanitization helper.
+
+- `src/lib/convexClient.ts`
+  - Convex HTTP singleton client.
+  - Token set/clear auth bridge.
+
+## 6.5 Convex Backend
+
+- `convex/schema.ts`
+  - Application tables: users, boards, columns, tasks.
+  - Better Auth model tables: sessions, accounts, verification, jwks.
+
+- `convex/board.ts`
+  - Default board bootstrap.
+  - Owner-scoped board querying.
+  - Column/task CRUD and reorder/move operations.
+  - Position-based ordering and reindexing.
+
+- `convex/users.ts`
+  - Current-user lookup by tokenIdentifier (fallback email resolution).
+  - Canonical user upsert and duplicate consolidation logic.
+
+- `convex/authDb.ts`
+  - Auth adapter model CRUD bridge with normalization/filtering.
+
+## 7) Environment Variables
+
+Minimum environment values for local full-stack operation:
+
+```env
+VITE_CONVEX_URL=https://YOUR_DEPLOYMENT.convex.cloud
+VITE_BETTER_AUTH_URL=http://localhost:3000/api/auth
+VITE_BETTER_AUTH_OAUTH_PROVIDERS=google
+VITE_CLOUDINARY_CLOUD_NAME=your-cloud-name
+VITE_CLOUDINARY_UPLOAD_PRESET=your-unsigned-upload-preset
+VITE_CLOUDINARY_UPLOAD_FOLDER=kanban-avatars
+BETTER_AUTH_SECRET=replace-with-a-strong-secret
+```
+
+Optional/common auth runtime values:
+
+```env
+BETTER_AUTH_URL=http://localhost:3000/api/auth
+BETTER_AUTH_JWT_ISSUER=http://localhost:3000/api/auth
+BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:5173,http://localhost:4173
+BETTER_AUTH_API_KEY=optional-if-dash-plugin-is-used
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+## 8) Scripts And Operations
+
+Inside `kanban-board/`:
+
+- `npm run dev`: start Vite dev server.
+- `npm run typecheck`: run TypeScript project references build check.
+- `npm run lint`: run ESLint.
+- `npm run build`: typecheck + production bundle build.
+- `npm run preview`: serve built output locally.
+- `npm run convex:dev`: run Convex dev environment.
+- `npm run convex:deploy`: deploy Convex functions/schema.
+- `npm run convex:codegen`: regenerate Convex typed client refs.
+
+## 9) Deployment Notes
+
+Current Vercel app config (frontend package):
+
+- Framework: `vite`
+- Install command: `npm ci`
+- Build command: `npm run build`
+- Output directory: `dist`
+
+When deploying from repository root, ensure project root points to `kanban-board/` so the correct package and Vite config are used.
+
+## 10) Known Limitations
+
+- React DevTools performance profiling summary is not yet checked in as a formal benchmark artifact.
+- Some auth-adapter utility code still uses broad runtime value handling and would benefit from stricter typed boundaries.
+- E2E tests for auth failure recovery and optimistic rollback race conditions are not yet documented as complete.
+
+## 11) Recommended Next Iteration
+
+1. Add integration tests for:
+   - token refresh failure/recovery behavior,
+   - optimistic update rollback consistency,
+   - account deletion flow with credential vs OAuth-only users.
+2. Add structured error telemetry around Convex sync fallbacks.
+3. Add explicit performance budget checks (bundle + interaction timing) to CI.
+4. Add a short architecture diagram (auth -> token -> Convex data path) to this document.
