@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Trash2, UserCircle2 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Input } from "../../components/ui/Input";
 import { getConvexClient, setConvexAuthToken } from "../../lib/convexClient";
 import { convexRefs } from "../../lib/convexRefs";
+import { uploadImageToCloudinary } from "../../lib/cloudinary";
 import {
   changePassword,
   deleteCurrentUser,
@@ -34,23 +35,6 @@ function toFriendlyStatus(error: unknown, fallback: string): string {
   return sanitizeUserFacingErrorMessage("", fallback);
 }
 
-function normalizeImageUrl(url: string): string | null {
-  const trimmed = url.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return null;
-    }
-    return parsed.toString();
-  } catch {
-    return null;
-  }
-}
-
 function isUnauthorizedConvexError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
@@ -68,8 +52,7 @@ export function AccountProfilePage({
 }: AccountProfilePageProps) {
   const [name, setName] = useState(sessionUser?.name || "");
   const [image, setImage] = useState(sessionUser?.image || "");
-  const [avatarLinkDraft, setAvatarLinkDraft] = useState("");
-  const [isAvatarLinkEditorOpen, setIsAvatarLinkEditorOpen] = useState(false);
+  const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -93,8 +76,6 @@ export function AccountProfilePage({
   useEffect(() => {
     setName(sessionUser?.name || "");
     setImage(sessionUser?.image || "");
-    setAvatarLinkDraft(sessionUser?.image || "");
-    setIsAvatarLinkEditorOpen(false);
   }, [sessionUser]);
 
   useEffect(() => {
@@ -153,14 +134,8 @@ export function AccountProfilePage({
     }
   };
 
-  const handleAvatarLinkSave = async (rawImageUrl: string) => {
+  const handleAvatarUpload = async (file: File) => {
     setProfileStatus(null);
-
-    const normalizedUrl = normalizeImageUrl(rawImageUrl);
-    if (!normalizedUrl) {
-      setProfileStatus("Paste a valid HTTP(S) image link.");
-      return;
-    }
 
     const client = getConvexClient();
     if (!client) {
@@ -170,18 +145,18 @@ export function AccountProfilePage({
 
     setIsAvatarUpdating(true);
     try {
+      const uploadedImage = await uploadImageToCloudinary(file);
+      const bestAvatarUrl = uploadedImage.url;
+
       await runWithConvexAuthRetry(async () =>
         (await client.mutation(convexRefs.upsertCurrentUser, {
           name: name.trim() || undefined,
-          avatarUrl: normalizedUrl,
+          avatarUrl: bestAvatarUrl,
         })) as string,
       );
 
-      const bestAvatarUrl = normalizedUrl;
       setImage(bestAvatarUrl);
-      setAvatarLinkDraft(bestAvatarUrl);
       onAvatarUpdated(bestAvatarUrl);
-      setIsAvatarLinkEditorOpen(false);
 
       try {
         await updateUserProfile({ image: bestAvatarUrl || null });
@@ -189,12 +164,22 @@ export function AccountProfilePage({
         // Ignore non-fatal profile mirror failures.
       }
 
-      setProfileStatus("Profile image updated.");
+      setProfileStatus("Profile image uploaded.");
     } catch (error) {
-      setProfileStatus(toFriendlyStatus(error, "Image update failed. Please try again."));
+      setProfileStatus(toFriendlyStatus(error, "Image upload failed. Please try again."));
     } finally {
       setIsAvatarUpdating(false);
     }
+  };
+
+  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextFile = event.target.files?.[0];
+    if (!nextFile) {
+      return;
+    }
+
+    event.target.value = "";
+    void handleAvatarUpload(nextFile);
   };
 
   const handleSaveProfile = async () => {
@@ -303,44 +288,23 @@ export function AccountProfilePage({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            {isAvatarLinkEditorOpen ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="url"
-                  value={avatarLinkDraft}
-                  onChange={(event) => setAvatarLinkDraft(event.target.value)}
-                  placeholder="https://example.com/avatar.jpg"
-                  className="h-8 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void handleAvatarLinkSave(avatarLinkDraft);
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => void handleAvatarLinkSave(avatarLinkDraft)}
-                  disabled={isAvatarUpdating}
-                >
-                  Confirm change
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                onClick={() => {
-                  setAvatarLinkDraft(image);
-                  setIsAvatarLinkEditorOpen(true);
-                }}
-                disabled={isAvatarUpdating}
-              >
-                Upload image link
-              </button>
-            )}
-            {isAvatarUpdating ? <p className="text-sm text-slate-500 dark:text-slate-400">Saving image link...</p> : null}
+            <input
+              ref={avatarFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarFileChange}
+            />
+            <button
+              type="button"
+              className="flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+              onClick={() => avatarFileInputRef.current?.click()}
+              disabled={isAvatarUpdating}
+            >
+              Upload image
+            </button>
+            {isAvatarUpdating ? <p className="text-sm text-slate-500 dark:text-slate-400">Uploading image...</p> : null}
+            {!isAvatarUpdating ? <p className="text-xs text-slate-500 dark:text-slate-400">PNG, JPG, GIF, WEBP up to 8MB.</p> : null}
           </div>
         </div>
 

@@ -125,8 +125,13 @@ Minimum env vars for the full auth stack:
 VITE_CONVEX_URL=https://YOUR_DEPLOYMENT.convex.cloud
 VITE_BETTER_AUTH_URL=http://localhost:3000/api/auth
 VITE_BETTER_AUTH_OAUTH_PROVIDERS=google,github
+VITE_CLOUDINARY_CLOUD_NAME=your-cloud-name
+VITE_CLOUDINARY_UPLOAD_PRESET=your-unsigned-upload-preset
+VITE_CLOUDINARY_UPLOAD_FOLDER=kanban-avatars
 BETTER_AUTH_SECRET=replace-with-a-strong-secret
 ```
+
+Profile avatars are now uploaded as files to Cloudinary from the Account page. The returned image URL is mirrored to Better Auth and stored in Convex user records.
 
 Important: `convex/auth.config.ts` must point to your Better Auth issuer and audience (`applicationID`) must match the JWT `aud` claim (default in this project: `convex`).
 
