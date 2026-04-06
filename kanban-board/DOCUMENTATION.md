@@ -1,6 +1,6 @@
 # Kanban Board Technical Documentation
 
-Last updated: 2026-04-05
+Last updated: 2026-04-06
 
 ## 1) Project Snapshot
 
@@ -29,6 +29,7 @@ The latest updates are centered around auth hardening, profile/account reliabili
 - Convex token sync is handled by periodic JWT fetch (`/token`) and client auth injection (`setAuth`).
 - Token refresh behavior now uses retries and graceful fallback to avoid auth flapping during transient failures.
 - User-facing auth errors are sanitized to hide noisy backend details (request IDs, raw status noise, generic server internals).
+- Auth adapter internals now use `unknown`-first typing in place of explicit TypeScript `any`, with runtime narrowing and schema-field filtering kept in place before Convex writes.
 
 ### 2.2 Account/Profile Updates
 

@@ -11,10 +11,15 @@ interface ConvexStorageAdapterOptions {
   convexUrl: string;
 }
 
+type ConvexFunctionArgs = Record<string, unknown>;
+type ConvexFunctionCaller = (name: string, args: ConvexFunctionArgs) => Promise<unknown>;
+
 export function convexStorageAdapter(
   options: ConvexStorageAdapterOptions
 ): StorageAdapter {
   const client = new ConvexHttpClient(options.convexUrl);
+  const runAction = client.action.bind(client) as unknown as ConvexFunctionCaller;
+  const runQuery = client.query.bind(client) as unknown as ConvexFunctionCaller;
 
   return {
     async create(data) {
@@ -23,10 +28,10 @@ export function convexStorageAdapter(
 
         for (const record of records) {
           try {
-            await client.action("authDb:createRecord", {
+            await runAction("authDb:createRecord", {
               table,
               data: record,
-            } as any);
+            });
           } catch (error) {
             console.error(
               `Failed to create ${table} record:`,
@@ -38,13 +43,14 @@ export function convexStorageAdapter(
     },
 
     async read(data) {
-      const result: Record<string, any[]> = {};
+      const result: Record<string, unknown[]> = {};
 
       for (const table of Object.keys(data)) {
         try {
-          result[table] = await client.query("authDb:getAllRecords", {
+          const queried = await runQuery("authDb:getAllRecords", {
             table,
-          } as any);
+          });
+          result[table] = Array.isArray(queried) ? queried : [];
         } catch (error) {
           console.error(`Failed to read ${table} records:`, error);
           result[table] = [];
@@ -60,10 +66,10 @@ export function convexStorageAdapter(
 
         for (const record of records) {
           try {
-            await client.action("authDb:updateRecord", {
+            await runAction("authDb:updateRecord", {
               table,
               data: record,
-            } as any);
+            });
           } catch (error) {
             console.error(
               `Failed to update ${table} record:`,
@@ -80,10 +86,10 @@ export function convexStorageAdapter(
 
         for (const record of records) {
           try {
-            await client.action("authDb:deleteRecord", {
+            await runAction("authDb:deleteRecord", {
               table,
-              id: record.id,
-            } as any);
+              id: (record as { id?: unknown }).id,
+            });
           } catch (error) {
             console.error(
               `Failed to delete ${table} record:`,

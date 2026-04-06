@@ -1,6 +1,17 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+
+type AuthTable = "users" | "sessions" | "accounts" | "verification" | "jwks";
+
+function parseAuthTable(table: string): AuthTable {
+  const normalized = table.toLowerCase();
+  if (normalized === "users" || normalized === "user") return "users";
+  if (normalized === "sessions" || normalized === "session") return "sessions";
+  if (normalized === "accounts" || normalized === "account") return "accounts";
+  if (normalized === "verification" || normalized === "verifications") return "verification";
+  if (normalized === "jwks" || normalized === "jwk") return "jwks";
+  throw new Error(`Unsupported auth table: ${table}`);
+}
 
 /**
  * Public storage functions for Better Auth adapter
@@ -13,9 +24,9 @@ export const createRecord = mutation({
     data: v.any(),
   },
   handler: async (ctx, args) => {
-    const { table, data } = args;
-    return await ctx.db.insert(table as any, {
-      ...data,
+    const table = parseAuthTable(args.table);
+    return await ctx.db.insert(table, {
+      ...(args.data as Record<string, unknown>),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -27,7 +38,7 @@ export const getAllRecords = query({
     table: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.query(args.table as any).collect();
+    return await ctx.db.query(parseAuthTable(args.table)).collect();
   },
 });
 
@@ -37,7 +48,8 @@ export const updateRecord = mutation({
     data: v.any(),
   },
   handler: async (ctx, args) => {
-    const { table, data } = args;
+    parseAuthTable(args.table);
+    const data = args.data as Record<string, unknown>;
     if (!data.id && !data._id) {
       throw new Error("Record must have id or _id field");
     }
@@ -57,6 +69,6 @@ export const deleteRecord = mutation({
     id: v.id("users"), // Generic ID type
   },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.id as any);
+    await ctx.db.delete(args.id);
   },
 });

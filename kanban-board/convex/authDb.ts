@@ -1,6 +1,28 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+type AuthTable = "users" | "sessions" | "accounts" | "verification" | "jwks";
+type AuthRow = Record<string, unknown>;
+type WhereOperator =
+  | "eq"
+  | "ne"
+  | "lt"
+  | "lte"
+  | "gt"
+  | "gte"
+  | "in"
+  | "not_in"
+  | "contains"
+  | "starts_with"
+  | "ends_with";
+
+type WhereClause = {
+  field: string;
+  value: unknown;
+  operator?: WhereOperator;
+  connector?: "AND" | "OR";
+};
+
 const whereOp = v.union(
   v.literal("eq"),
   v.literal("ne"),
@@ -22,7 +44,7 @@ const whereItem = v.object({
   connector: v.optional(v.union(v.literal("AND"), v.literal("OR"))),
 });
 
-function modelToTable(model: string): string {
+function modelToTable(model: string): AuthTable {
   const normalized = model.toLowerCase();
   if (normalized === "user" || normalized === "users") return "users";
   if (normalized === "session" || normalized === "sessions") return "sessions";
@@ -36,13 +58,24 @@ function tableSupportsUpdatedAt(table: string): boolean {
   return table !== "jwks";
 }
 
-function cmp(fieldValue: any, operator: string, value: any): boolean {
+function isRelationalComparable(value: unknown): value is string | number | bigint {
+  return typeof value === "string" || typeof value === "number" || typeof value === "bigint";
+}
+
+function getNestedString(row: AuthRow, key: string, nestedKey: string): string | undefined {
+  const parent = row[key];
+  if (!parent || typeof parent !== "object") return undefined;
+  const nested = (parent as Record<string, unknown>)[nestedKey];
+  return typeof nested === "string" ? nested : undefined;
+}
+
+function cmp(fieldValue: unknown, operator: string, value: unknown): boolean {
   if (operator === "eq") return fieldValue === value;
   if (operator === "ne") return fieldValue !== value;
-  if (operator === "lt") return fieldValue < value;
-  if (operator === "lte") return fieldValue <= value;
-  if (operator === "gt") return fieldValue > value;
-  if (operator === "gte") return fieldValue >= value;
+  if (operator === "lt") return isRelationalComparable(fieldValue) && isRelationalComparable(value) && fieldValue < value;
+  if (operator === "lte") return isRelationalComparable(fieldValue) && isRelationalComparable(value) && fieldValue <= value;
+  if (operator === "gt") return isRelationalComparable(fieldValue) && isRelationalComparable(value) && fieldValue > value;
+  if (operator === "gte") return isRelationalComparable(fieldValue) && isRelationalComparable(value) && fieldValue >= value;
   if (operator === "in") return Array.isArray(value) && value.includes(fieldValue);
   if (operator === "not_in") return Array.isArray(value) && !value.includes(fieldValue);
   if (operator === "contains") return typeof fieldValue === "string" && typeof value === "string" && fieldValue.includes(value);
@@ -51,7 +84,7 @@ function cmp(fieldValue: any, operator: string, value: any): boolean {
   return fieldValue === value;
 }
 
-function matchesWhere(row: Record<string, any>, where?: Array<Record<string, any>>): boolean {
+function matchesWhere(row: AuthRow, where?: WhereClause[]): boolean {
   if (!where || where.length === 0) return true;
 
   let acc = true;
@@ -73,16 +106,16 @@ function matchesWhere(row: Record<string, any>, where?: Array<Record<string, any
   return acc;
 }
 
-function project(row: Record<string, any>, select?: string[]): Record<string, any> {
+function project(row: AuthRow, select?: string[]): AuthRow {
   if (!select || select.length === 0) return row;
-  const out: Record<string, any> = {};
+  const out: AuthRow = {};
   for (const key of select) {
     out[key] = row[key];
   }
   return out;
 }
 
-function sanitizeForConvex(value: any): any {
+function sanitizeForConvex(value: unknown): unknown {
   if (value === null || typeof value === "undefined") {
     return undefined;
   }
@@ -98,7 +131,7 @@ function sanitizeForConvex(value: any): any {
   }
 
   if (typeof value === "object") {
-    const out: Record<string, any> = {};
+    const out: AuthRow = {};
     for (const [key, nested] of Object.entries(value)) {
       const sanitized = sanitizeForConvex(nested);
       if (typeof sanitized !== "undefined") {
@@ -111,7 +144,7 @@ function sanitizeForConvex(value: any): any {
   return value;
 }
 
-function normalizeCreateData(model: string, data: Record<string, any>): Record<string, any> {
+function normalizeCreateData(model: string, data: AuthRow): AuthRow {
   const normalizedModel = model.toLowerCase();
 
   const toEpochMs = (raw: number): number => {
@@ -122,7 +155,7 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
     return raw;
   };
 
-  const coerceTimestamp = (value: any, fallback: number): number => {
+  const coerceTimestamp = (value: unknown, fallback: number): number => {
     if (typeof value === "number" && Number.isFinite(value)) return toEpochMs(value);
     if (typeof value === "string") {
       const parsedNumber = Number(value);
@@ -160,9 +193,9 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
       throw new Error("Auth user email is required for users model.");
     }
 
-    const hasName = typeof data.name === "string" && data.name.trim().length > 0;
+    const normalizedName = typeof data.name === "string" ? data.name.trim() : "";
     data.email = email;
-    data.name = hasName ? data.name.trim() : email.split("@")[0] || "User";
+    data.name = normalizedName || email.split("@")[0] || "User";
   }
 
   if (normalizedModel === "account" || normalizedModel === "accounts") {
@@ -175,8 +208,8 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
     const userIdCandidate =
       typeof data.userId === "string"
         ? data.userId
-        : typeof data.user?.id === "string"
-          ? data.user.id
+        : typeof getNestedString(data, "user", "id") === "string"
+          ? (getNestedString(data, "user", "id") as string)
           : "";
     if (!userIdCandidate || userIdCandidate.trim().length === 0) {
       throw new Error("Auth account userId is required for accounts model.");
@@ -223,8 +256,8 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
     const userIdCandidate =
       typeof data.userId === "string"
         ? data.userId
-        : typeof data.user?.id === "string"
-          ? data.user.id
+        : typeof getNestedString(data, "user", "id") === "string"
+          ? (getNestedString(data, "user", "id") as string)
           : "";
     if (!userIdCandidate || userIdCandidate.trim().length === 0) {
       throw new Error("Auth session userId is required for sessions model.");
@@ -255,13 +288,15 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
       data.privateKey = JSON.stringify(data.privateKey ?? "");
     }
 
-    data.publicKey = data.publicKey.trim();
-    data.privateKey = data.privateKey.trim();
+    const normalizedPublicKey = typeof data.publicKey === "string" ? data.publicKey.trim() : "";
+    const normalizedPrivateKey = typeof data.privateKey === "string" ? data.privateKey.trim() : "";
+    data.publicKey = normalizedPublicKey;
+    data.privateKey = normalizedPrivateKey;
 
-    if (!data.publicKey) {
+    if (!normalizedPublicKey) {
       throw new Error("Auth jwks publicKey is required for jwks model.");
     }
-    if (!data.privateKey) {
+    if (!normalizedPrivateKey) {
       throw new Error("Auth jwks privateKey is required for jwks model.");
     }
 
@@ -296,7 +331,7 @@ function normalizeCreateData(model: string, data: Record<string, any>): Record<s
   return data;
 }
 
-function normalizeUpdateData(model: string, data: Record<string, any>): Record<string, any> {
+function normalizeUpdateData(model: string, data: AuthRow): AuthRow {
   const normalizedModel = model.toLowerCase();
 
   const toEpochMs = (raw: number): number => {
@@ -306,7 +341,7 @@ function normalizeUpdateData(model: string, data: Record<string, any>): Record<s
     return raw;
   };
 
-  const coerceTimestamp = (value: any, fallback: number): number => {
+  const coerceTimestamp = (value: unknown, fallback: number): number => {
     if (typeof value === "number" && Number.isFinite(value)) return toEpochMs(value);
     if (typeof value === "string") {
       const parsedNumber = Number(value);
@@ -443,12 +478,12 @@ const ALLOWED_FIELDS_BY_MODEL: Record<string, Set<string>> = {
   ]),
 };
 
-function filterToSchemaFields(model: string, data: Record<string, any>): Record<string, any> {
+function filterToSchemaFields(model: string, data: AuthRow): AuthRow {
   const table = modelToTable(model);
   const allowed = ALLOWED_FIELDS_BY_MODEL[table];
   if (!allowed) return data;
 
-  const out: Record<string, any> = {};
+  const out: AuthRow = {};
   for (const [key, value] of Object.entries(data)) {
     if (allowed.has(key)) {
       out[key] = value;
@@ -463,12 +498,12 @@ export const create = mutation({
     data: v.any(),
   },
   handler: async (ctx, args) => {
-    const table = modelToTable(args.model) as any;
+    const table = modelToTable(args.model);
     const data = filterToSchemaFields(
       args.model,
       normalizeCreateData(
         args.model,
-        sanitizeForConvex({ ...(args.data as Record<string, any>) })
+        sanitizeForConvex({ ...(args.data as AuthRow) }) as AuthRow
       )
     );
 
@@ -479,10 +514,10 @@ export const create = mutation({
     }
 
     try {
-      const insertedId = await ctx.db.insert(table, data);
-      const row = await ctx.db.get(insertedId as any);
+      const insertedId = await ctx.db.insert(table, data as never);
+      const row = await ctx.db.get(insertedId);
       return row;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(
         `authDb.create failed for model ${args.model}: ${message}; keys=${Object.keys(data).join(",")}`
@@ -501,20 +536,20 @@ export const findMany = query({
     select: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const table = modelToTable(args.model) as any;
+    const table = modelToTable(args.model);
     const rows = await ctx.db.query(table).collect();
-
-    const filtered = rows.filter((row: any) => matchesWhere(row, args.where as any));
+    const where = args.where as unknown as WhereClause[] | undefined;
+    const filtered = rows.filter((row) => matchesWhere(row as AuthRow, where));
 
     if (args.sortBy) {
       const { field, direction } = args.sortBy;
-      filtered.sort((a: any, b: any) => {
-        const av = a[field];
-        const bv = b[field];
+      filtered.sort((a, b) => {
+        const av = (a as AuthRow)[field];
+        const bv = (b as AuthRow)[field];
         if (av === bv) return 0;
         if (av === undefined) return 1;
         if (bv === undefined) return -1;
-        const ord = av < bv ? -1 : 1;
+        const ord = isRelationalComparable(av) && isRelationalComparable(bv) && av < bv ? -1 : 1;
         return direction === "desc" ? -ord : ord;
       });
     }
@@ -523,7 +558,7 @@ export const findMany = query({
     const limit = args.limit ?? filtered.length;
     const paged = filtered.slice(offset, offset + limit);
 
-    return paged.map((row: any) => project(row, args.select));
+    return paged.map((row) => project(row as AuthRow, args.select));
   },
 });
 
@@ -534,11 +569,12 @@ export const findOne = query({
     select: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const table = modelToTable(args.model) as any;
+    const table = modelToTable(args.model);
     const rows = await ctx.db.query(table).collect();
-    const found = rows.find((row: any) => matchesWhere(row, args.where as any));
+    const where = args.where as unknown as WhereClause[];
+    const found = rows.find((row) => matchesWhere(row as AuthRow, where));
     if (!found) return null;
-    return project(found, args.select);
+    return project(found as AuthRow, args.select);
   },
 });
 
@@ -548,9 +584,10 @@ export const count = query({
     where: v.optional(v.array(whereItem)),
   },
   handler: async (ctx, args) => {
-    const table = modelToTable(args.model) as any;
+    const table = modelToTable(args.model);
     const rows = await ctx.db.query(table).collect();
-    return rows.filter((row: any) => matchesWhere(row, args.where as any)).length;
+    const where = args.where as unknown as WhereClause[] | undefined;
+    return rows.filter((row) => matchesWhere(row as AuthRow, where)).length;
   },
 });
 
@@ -561,12 +598,13 @@ export const update = mutation({
     update: v.any(),
   },
   handler: async (ctx, args) => {
-    const table = modelToTable(args.model) as any;
+    const table = modelToTable(args.model);
     const rows = await ctx.db.query(table).collect();
-    const found = rows.find((row: any) => matchesWhere(row, args.where as any));
+    const where = args.where as unknown as WhereClause[];
+    const found = rows.find((row) => matchesWhere(row as AuthRow, where));
     if (!found) return null;
 
-    const normalizedPatchInput = sanitizeForConvex({ ...(args.update as Record<string, any>) });
+    const normalizedPatchInput = sanitizeForConvex({ ...(args.update as AuthRow) }) as AuthRow;
     if (tableSupportsUpdatedAt(table)) {
       normalizedPatchInput.updatedAt = Date.now();
     }
@@ -578,7 +616,7 @@ export const update = mutation({
     try {
       await ctx.db.patch(found._id, patch);
       return await ctx.db.get(found._id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(
         `authDb.update failed for model ${args.model}: ${message}; keys=${Object.keys(patch).join(",")}`
@@ -594,10 +632,11 @@ export const updateMany = mutation({
     update: v.any(),
   },
   handler: async (ctx, args) => {
-    const table = modelToTable(args.model) as any;
+    const table = modelToTable(args.model);
     const rows = await ctx.db.query(table).collect();
-    const matches = rows.filter((row: any) => matchesWhere(row, args.where as any));
-    const normalizedPatchInput = sanitizeForConvex({ ...(args.update as Record<string, any>) });
+    const where = args.where as unknown as WhereClause[];
+    const matches = rows.filter((row) => matchesWhere(row as AuthRow, where));
+    const normalizedPatchInput = sanitizeForConvex({ ...(args.update as AuthRow) }) as AuthRow;
     if (tableSupportsUpdatedAt(table)) {
       normalizedPatchInput.updatedAt = Date.now();
     }
@@ -611,7 +650,7 @@ export const updateMany = mutation({
       for (const row of matches) {
         await ctx.db.patch(row._id, patch);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(
         `authDb.updateMany failed for model ${args.model}: ${message}; keys=${Object.keys(patch).join(",")}`
@@ -628,9 +667,10 @@ export const remove = mutation({
     where: v.array(whereItem),
   },
   handler: async (ctx, args) => {
-    const table = modelToTable(args.model) as any;
+    const table = modelToTable(args.model);
     const rows = await ctx.db.query(table).collect();
-    const found = rows.find((row: any) => matchesWhere(row, args.where as any));
+    const where = args.where as unknown as WhereClause[];
+    const found = rows.find((row) => matchesWhere(row as AuthRow, where));
     if (!found) return null;
     await ctx.db.delete(found._id);
     return null;
@@ -643,9 +683,10 @@ export const removeMany = mutation({
     where: v.array(whereItem),
   },
   handler: async (ctx, args) => {
-    const table = modelToTable(args.model) as any;
+    const table = modelToTable(args.model);
     const rows = await ctx.db.query(table).collect();
-    const matches = rows.filter((row: any) => matchesWhere(row, args.where as any));
+    const where = args.where as unknown as WhereClause[];
+    const matches = rows.filter((row) => matchesWhere(row as AuthRow, where));
 
     for (const row of matches) {
       await ctx.db.delete(row._id);
