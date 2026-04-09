@@ -250,18 +250,4 @@ Current Vercel app config (frontend package):
 
 When deploying from repository root, ensure project root points to `kanban-board/` so the correct package and Vite config are used.
 
-## 10) Known Limitations
 
-- React DevTools performance profiling summary is not yet checked in as a formal benchmark artifact.
-- Some auth-adapter utility code still uses broad runtime value handling and would benefit from stricter typed boundaries.
-- E2E tests for auth failure recovery and optimistic rollback race conditions are not yet documented as complete.
-
-## 11) Recommended Next Iteration
-
-1. Add integration tests for:
-   - token refresh failure/recovery behavior,
-   - optimistic update rollback consistency,
-   - account deletion flow with credential vs OAuth-only users.
-2. Add structured error telemetry around Convex sync fallbacks.
-3. Add explicit performance budget checks (bundle + interaction timing) to CI.
-4. Add a short architecture diagram (auth -> token -> Convex data path) to this document.
