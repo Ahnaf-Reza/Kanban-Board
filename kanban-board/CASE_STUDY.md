@@ -645,9 +645,3 @@ Data mutation failures:
 - Typed normalized board model and validated persisted hydration.
 - Works in both local standalone auth mode and Vercel serverless mode.
 
-## 16. Optional Improvements
-
-- Add E2E tests for drag reorder, auth refresh recovery, and account delete scenarios.
-- Add API contract docs for Better Auth custom route responses.
-- Add metrics/logging around auth adapter failures and sync retries.
-- Add formal architecture diagram image to this file.
