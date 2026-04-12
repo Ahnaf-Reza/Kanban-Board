@@ -6,10 +6,10 @@ Last updated: 2026-04-08
 
 This project is a production-style Kanban board with:
 - React + TypeScript frontend (Vite)
-- shadcn/ui-style design system patterns (Radix UI primitives + Tailwind + CVA)
-- Zustand local state with optimistic updates and undo/redo
-- Convex as authenticated backend data layer
-- Better Auth as identity provider (email/password + Google OAuth)
+- shadcn/ui-style design 
+- Zustand for local state management
+- Convex as backend database synchronization
+- Better Auth as authenticator (email/password + Google OAuth)
 - Vercel serverless auth route bridge
 - Cloudinary image uploads for avatars
 
@@ -17,12 +17,9 @@ The architecture is split so UI is fast and local-first, while all persistent bo
 
 ## 2. Repository and Runtime Topology
 
-Workspace root includes orchestration and deployment wrappers. App logic lives in the nested app package.
-
 Main areas:
-- Root package: orchestration scripts, top-level Vercel rewrites
 - `kanban-board/`: primary React app + Convex functions + auth API handler
-- `api/auth/[...handler].js` (root): deployment bridge to nested auth handler and OIDC helper endpoints
+- `api/auth/[...handler].js` (root): auth handler 
 - `better-auth-server/`: local standalone Better Auth server for non-Vercel scenarios
 
 Key runtime path in production:
@@ -31,7 +28,7 @@ Key runtime path in production:
 3. Better Auth uses Convex adapter to persist auth tables.
 4. Frontend fetches JWT from `/api/auth/token`.
 5. Frontend attaches JWT to Convex HTTP client.
-6. Frontend calls Convex board/user mutations and queries.
+6. Frontend calls Convex board/user queries.
 
 ## 3. Folder-by-Folder Responsibilities
 
@@ -48,16 +45,13 @@ Key runtime path in production:
 ### `kanban-board/api/auth`
 - Better Auth configuration and serverless request handler.
 - Convex adapter for Better Auth model CRUD (`authDb` functions).
-- Optional memory storage adapter and Prisma fallback utility.
 
 ### Root `api/auth`
 - Entry route used by Vercel rewrite.
-- Proxies to nested auth handler and exposes OIDC metadata endpoints.
 - Maps startup/runtime auth failures to explicit response payloads.
 
 ### Root `better-auth-server/src`
 - Local Node HTTP server that serves Better Auth at `/api/auth`.
-- Also serves OIDC discovery and JWKS mirror endpoints.
 
 ## 4. Frontend Architecture and Behavior
 
